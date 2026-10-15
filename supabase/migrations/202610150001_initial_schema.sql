@@ -201,6 +201,7 @@ begin
  if next_hole is null or next_hole > b.end_hole or abs(diff) < 2 then
    raise exception 'Press not eligible: bet must be at least two down with a next hole';
  end if;
+ if exists(select 1 from public.press_events pe where pe.parent_bet_id=p_parent and pe.undone_at is null and exists (select 1 from public.nassau_bets nb where nb.id=pe.press_bet_id and nb.start_hole=next_hole)) then raise exception 'Active press already exists for this bet and hole'; end if;
  if exists(select 1 from public.hole_scores where match_id=b.match_id and hole_number=next_hole) then
    raise exception 'Press must be activated before next-hole scoring begins';
  end if;
@@ -219,7 +220,7 @@ begin
  select * into e from public.press_events where press_bet_id=p_press_bet for update;
  if not found or not public.is_match_member(e.match_id) then raise exception 'Not authorized'; end if;
  if e.undone_at is not null then raise exception 'Already undone'; end if;
- if exists(select 1 from public.nassau_bets where parent_bet_id=p_press_bet) then
+ if exists(select 1 from public.nassau_bets nb join public.press_events pe on pe.press_bet_id=nb.id where nb.parent_bet_id=p_press_bet and pe.undone_at is null) then
    raise exception 'Undo child presses first';
  end if;
  select start_hole into n from public.nassau_bets where id=p_press_bet;
@@ -265,7 +266,7 @@ create policy scores_read on public.hole_scores for select to authenticated usin
 create policy scores_insert on public.hole_scores for insert to authenticated with check(public.is_match_member(match_id) and saved_by=auth.uid());
 create policy scores_update on public.hole_scores for update to authenticated using(public.is_match_member(match_id)) with check(public.is_match_member(match_id) and saved_by=auth.uid());
 
-create policy bets_read on public.nassau_bets for select to authenticated using(public.is_match_member(match_id));
+create policy bets_read on public.nassau_bets for select to authenticated using(public.is_match_member(match_id) and (parent_bet_id is null or not exists(select 1 from public.press_events pe where pe.press_bet_id=nassau_bets.id and pe.undone_at is not null)));
 create policy bets_insert on public.nassau_bets for insert to authenticated with check(
  public.is_match_owner(match_id) and parent_bet_id is null and activated_by is null
 );
@@ -276,6 +277,9 @@ grant execute on function public.is_match_member(uuid), public.is_match_owner(uu
 revoke all on function public.activate_press(uuid,text), public.undo_press(uuid) from public;
 grant execute on function public.activate_press(uuid,text), public.undo_press(uuid) to authenticated;
 
+-- Publish realtime updates only after RLS policies are enabled.
+-- Note: a production release needs transactional press and score-save RPCs,
+-- verified handicap allocation, and multi-user integration tests.
 -- Realtime publications: clients still require authenticated RLS access.
 do $$ begin
  alter publication supabase_realtime add table public.hole_scores;
