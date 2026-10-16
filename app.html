@@ -12,7 +12,7 @@
 </section></main>
 <script type="module">
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
-const db=createClient('https://ptbszujuodpkchuwppcv.supabase.co','sb_publishable_y5PokQBWmlCnXBVABMC8Sw_Gd9_wbOx');
+const db=createClient('https://ptbszujuodpkchuwppcv.supabase.co','sb_publishable_mJdS8K0qRsrb_7nyOQ4Tzw_QRmxXBV1');
 const el=id=>document.getElementById(id);let user=null,match=null,participants=[],scores=[],bets=[],events=[],channel=null;
 const msg=(s,error=false)=>{el('message').textContent=s;el('message').style.color=error?'#a42626':'#173e5d'};
 const error=e=>msg(e?.message||String(e),true);
