@@ -28,11 +28,14 @@ async function showPlayerProfile(id){try{const {data:p,error:e}=await db.from('p
 async function profileNassauBetting(m,p,kind){
 if(m.game_type!=='nassau')return null;
 const names=['match_players','guest_players','hole_scores','guest_hole_scores','match_team_players','match_hole_strokes','match_nassau_presses'];
-const fields=['player_id,course_handicap','id,directory_entry_id,course_handicap','player_id,hole_number,gross_strokes','guest_id,hole_number,gross_strokes','player_id,guest_id,team_number','hole_number,stroke_index','segment,start_hole,undone_at'];
+const fields=['player_id,course_handicap,players(handicap_index)','id,directory_entry_id,handicap_index,course_handicap','player_id,hole_number,gross_strokes','guest_id,hole_number,gross_strokes','player_id,guest_id,team_number','hole_number,stroke_index','segment,start_hole,undone_at'];
 const rows=await Promise.all(names.map((t,i)=>db.from(t).select(fields[i]).eq('match_id',m.id)));
 if(rows.some(r=>r.error))return null;
 const [mp,gp,hs,gs,teams,indices,presses]=rows.map(r=>r.data||[]);
-const roster=[...mp.map(x=>({id:x.player_id,guest:false,hcp:Number(x.course_handicap)})),...gp.map(x=>({id:x.id,guest:true,hcp:Number(x.course_handicap),directory:x.directory_entry_id}))];
+const {data:tee,error:teeError}=await db.from('course_tees').select('slope_rating,course_rating,par').eq('id',m.tee_id).single();
+if(teeError)return null;
+const computed=index=>index==null?null:Math.floor(Number(index)*Number(tee.slope_rating)/113+Number(tee.course_rating)-Number(tee.par)+0.5);
+const roster=[...mp.map(x=>({id:x.player_id,guest:false,hcp:computed(x.players?.handicap_index)??Number(x.course_handicap)})),...gp.map(x=>({id:x.id,guest:true,hcp:computed(x.handicap_index)??Number(x.course_handicap),directory:x.directory_entry_id}))];
 const self=roster.find(x=>kind==='registered'?!x.guest&&x.id===p.id:x.guest&&x.directory===p.id);
 const n=Number(m.hole_count);
 if(!self||![2,4].includes(roster.length)||roster.some(x=>!Number.isInteger(x.hcp))||indices.length!==n)return null;
@@ -77,7 +80,7 @@ const q=kind==='registered'?db.from('match_players').select('match_id,course_han
 const {data:entries,error:e}=await q;if(e)throw e;
 const ids=[...new Set((entries||[]).map(x=>x.match_id))];
 if(!ids.length){career.textContent='No matches recorded yet.';return}
-const {data:matches,error:me}=await db.from('matches').select('id,match_date,game_type,status,hole_count,course_id,stake').in('id',ids).order('match_date',{ascending:false});if(me)throw me;
+const {data:matches,error:me}=await db.from('matches').select('id,match_date,game_type,status,hole_count,course_id,tee_id,stake').in('id',ids).order('match_date',{ascending:false});if(me)throw me;
 const posted=(matches||[]).filter(m=>[9,18].includes(Number(m.hole_count))&&['posted','completed','finalized'].includes(String(m.status).toLowerCase()));
 const evaluated=await Promise.all(posted.slice(0,40).map(async m=>{
 try{
