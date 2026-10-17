@@ -167,10 +167,10 @@ const incomplete=all.filter(p=>Array.from({length:holes},(_,i)=>i+1).some(h=>!(p
 if(incomplete.length)throw Error('Cannot post yet: '+incomplete.length+' player(s) have missing saved scores. Check both nines if this is an 18-hole match.');
 if(!confirm('Finalize and post this '+holes+'-hole match? All saved scores will become read-only.'))return;
 button.textContent='Posting match…';
-const {data,error:e}=await db.from('matches').update({status:'posted'}).eq('id',id).eq('created_by',user.id).eq('status','active').select('id,status').maybeSingle();
+const {data,error:e}=await db.rpc('finalize_complete_match',{p_match:id});
 if(e)throw e;
-if(!data)throw Error('The match was not posted. Check that you are the match owner and the match is still active.');
-match.status=data.status;await refresh();await loadMatches();msg('Match posted successfully. Player records will include this result when the player profile is opened.');
+if(data!=='posted')throw Error('The database did not confirm finalization.');
+match.status='posted';await refresh();await loadMatches();msg('Match posted successfully. Player records will include this result when the player profile is opened.');
 }catch(e){updateSaveStatus('Posting failed: '+(e?.message||String(e)));error(e)}
 finally{button.disabled=false;button.textContent='Finalize / Post Match'}
 };
