@@ -99,15 +99,32 @@ const gross=x=>{const r=scoreRows.filter(y=>y.id===x.id&&y.guest===x.guest&&Numb
 if(!self)return {m,result:null};
 const ownGross=gross(self),net=ownGross===null?null:ownGross-self.hcp*(holes/18);
 let result=null;
-if([9,18].includes(holes)&&roster.length===2&&ownGross!==null){
-const opponent=roster.find(x=>x!==self),theirGross=gross(opponent);
-if(theirGross!==null){
+if([9,18].includes(holes)&&[2,4].includes(roster.length)&&roster.every(x=>gross(x)!==null)){
 const {data:strokeData,error:strokeError}=await db.from('match_hole_strokes').select('hole_number,stroke_index').eq('match_id',m.id);
-if(!strokeError&&strokeData?.length===holes){
-const si=new Map(strokeData.map(x=>[Number(x.hole_number),Number(x.stroke_index)]));
-const base=Math.min(self.hcp,opponent.hcp);
-const net=(x,h)=>{const raw=scoreRows.find(y=>y.id===x.id&&y.guest===x.guest&&Number(y.hole_number)===h)?.gross_strokes;const allowance=x.hcp-base,index=si.get(h);if(raw==null||!index)return null;const strokes=allowance>=0?Math.floor(allowance/18)+(index<=allowance%18?1:0):-Math.floor(-allowance/18)-(index<=(-allowance)%18?1:0);return Number(raw)-strokes};
-let lead=0,valid=true;for(let h=1;h<=holes;h++){const a=net(self,h),b=net(opponent,h);if(a===null||b===null){valid=false;break}lead+=a<b?1:a>b?-1:0}if(valid)result=lead>0?'win':lead<0?'loss':'tie';
+const {data:tee,error:teeError}=await db.from('course_tees').select('slope_rating,course_rating,par').eq('id',m.tee_id).single();
+const [registeredProfiles,guestProfiles]=await Promise.all([
+db.from('match_players').select('player_id,players(handicap_index)').eq('match_id',m.id),
+db.from('guest_players').select('id,handicap_index').eq('match_id',m.id)
+]);
+if(!strokeError&&!teeError&&!registeredProfiles.error&&!guestProfiles.error&&strokeData?.length===holes){
+const course=index=>index==null?null:Math.floor(Number(index)*Number(tee.slope_rating)/113+Number(tee.course_rating)-Number(tee.par)+0.5);
+const handicaps=roster.map(x=>{const profile=x.guest?guestProfiles.data.find(z=>z.id===x.id)?.handicap_index:registeredProfiles.data.find(z=>z.player_id===x.id)?.players?.handicap_index;return course(profile)??x.hcp});
+const si=new Map(strokeData.map(x=>[Number(x.hole_number),Number(x.stroke_index)])),base=Math.min(...handicaps);
+const netHole=(x,h)=>{const row=scoreRows.find(y=>y.id===x.id&&y.guest===x.guest&&Number(y.hole_number)===h);
+const index=si.get(h),raw=Number(row?.gross_strokes),allowance=handicaps[roster.indexOf(x)]-base;
+if(!Number.isInteger(index)||!Number.isInteger(raw)||raw<1)return null;
+const strokes=allowance>=0?Math.floor(allowance/18)+(index<=allowance%18?1:0):-Math.floor(-allowance/18)-(index<=(-allowance)%18?1:0);
+return raw-strokes};
+const teamOf=x=>(teams.data||[]).find(t=>x.guest?t.guest_id===x.id:t.player_id===x.id)?.team_number;
+const myTeam=teamOf(self),left=roster.length===2?[self]:roster.filter(x=>teamOf(x)===myTeam),right=roster.filter(x=>!left.includes(x));
+if(left.length===roster.length/2&&right.length===roster.length/2&&(roster.length===2||[1,2].includes(myTeam))){
+let lead=0,valid=true;
+for(let h=1;h<=holes;h++){
+const aa=left.map(x=>netHole(x,h)),bb=right.map(x=>netHole(x,h));
+if([...aa,...bb].some(x=>x===null)){valid=false;break}
+const av=Math.min(...aa),bv=Math.min(...bb);lead+=av<bv?1:av>bv?-1:0;
+}
+if(valid)result=lead>0?'win':lead<0?'loss':'tie';
 }
 }
 }
@@ -116,7 +133,7 @@ return {m,result,gross:ownGross,net,team:roster.length===4};
 }));
 const scored=evaluated.filter(x=>x.result),wins=scored.filter(x=>x.result==='win').length,losses=scored.filter(x=>x.result==='loss').length,ties=scored.filter(x=>x.result==='tie').length;
 const avg=key=>{const a=evaluated.filter(x=>x[key]!=null&&x.m.hole_count===18).map(x=>x[key]);return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'—'};
-career.innerHTML='<h3>Playing record · 9 &amp; 18 holes</h3><div class="profile-stats-grid">'+[['Played',scored.length],['9-hole',scored.filter(x=>Number(x.m.hole_count)===9).length],['18-hole',scored.filter(x=>Number(x.m.hole_count)===18).length],['Wins',wins],['Losses',losses],['Ties',ties],['Win %',scored.length?Math.round(wins/scored.length*100)+'%':'—'],['Avg Gross',avg('gross')],['Avg Net',avg('net')]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Playing wins/losses count posted, fully scored 9-hole and 18-hole singles matches, using net hole-by-hole match play. Team match records and betting outcomes are calculated separately. Gross and net averages use 18-hole rounds only. '+(posted.length>40?'Only the 40 most recent completed matches were analyzed.':'')+'</p>';
+career.innerHTML='<h3>Playing record · 9 &amp; 18 holes</h3><div class="profile-stats-grid">'+[['Played',scored.length],['9-hole',scored.filter(x=>Number(x.m.hole_count)===9).length],['18-hole',scored.filter(x=>Number(x.m.hole_count)===18).length],['Wins',wins],['Losses',losses],['Ties',ties],['Win %',scored.length?Math.round(wins/scored.length*100)+'%':'—'],['Avg Gross',avg('gross')],['Avg Net',avg('net')]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Playing wins/losses count completed 9-hole and 18-hole singles and 2v2 best-ball matches using net hole-by-hole match play. Betting outcomes are calculated separately. Gross and net averages use 18-hole rounds only. '+(posted.length>40?'Only the 40 most recent completed matches were analyzed.':'')+'</p>';
 const tally=field=>{const out={};for(const item of scored){const m=item.m;const key=field==='year'?String(m.match_date).slice(0,4):m.game_type;(out[key]??=[]).push(item)}return Object.entries(out).sort((a,b)=>b[0].localeCompare(a[0])).map(([key,rows])=>'<div class="profile-record-row"><span>'+safe(key)+'</span><strong>'+rows.filter(x=>x.result==='win').length+' W · '+rows.filter(x=>x.result==='loss').length+' L · '+rows.filter(x=>x.result==='tie').length+' T</strong></div>').join('')||'<p class="muted">No completed matches yet.</p>'};
 years.innerHTML=tally('year')+'<h3>Record by match length</h3>'+[9,18].map(n=>{const rows=scored.filter(x=>Number(x.m.hole_count)===n);const w=rows.filter(x=>x.result==='win').length,l=rows.filter(x=>x.result==='loss').length,t=rows.filter(x=>x.result==='tie').length;return '<div class="profile-record-row"><span>'+n+' holes</span><strong>'+w+' W · '+l+' L · '+t+' T</strong></div>'}).join('');games.innerHTML=tally('game');
 const betting=(await Promise.all(posted.slice(0,40).map(m=>profileNassauBetting(m,p,kind)))).filter(x=>x!==null);
