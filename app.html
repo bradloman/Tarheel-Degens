@@ -51,7 +51,7 @@ if(groups.some(g=>g.length!==(four?2:1))){target.textContent="Assign teams first
 const hc=roster.map(p=>matchTee&&p.index!=null&&p.index!==""?courseHcp(p.index):p.handicap);
 if(hc.some(n=>!Number.isInteger(n))){target.textContent="Enter handicaps first.";return}
 const base=Math.min(...hc),stake=Number(match.stake)||0;
-const names=groups.map((g,i)=>four?"Team "+(i+1):displayName(g[0].name));
+const names=groups.map((g,i)=>four?"Team "+(i+1):shortName(g[0].name));
 const hole=h=>{const si=strokeIndices.find(x=>x.hole_number===h)?.stroke_index;if(!Number.isInteger(si))return null;
 const vals=groups.map(g=>g.map(p=>{const input=el("scoreRows").querySelector('input[data-hole="'+h+'"][data-player="'+p.id+'"]');
 const record=(p.guest?guestScores:scores).find(x=>x.hole_number===h&&(p.guest?x.guest_id:x.player_id)===p.id);
