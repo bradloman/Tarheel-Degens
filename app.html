@@ -140,7 +140,7 @@ function hasUnsavedScores(){return [...el('scoreRows').querySelectorAll('input[d
 function changeNine(n){if(n===activeNine)return;if(hasUnsavedScores()&&!confirm('Some scores are not saved yet. Switch nines anyway?'))return;activeNine=n;render()}
 el('frontNine').onclick=()=>changeNine(1);
 el('backNine').onclick=()=>changeNine(2);
-const posted=()=>String(match?.status||'').toLowerCase()==='posted';
+const posted=()=>['posted','completed','finalized'].includes(String(match?.status||'').toLowerCase());
 function updateSaveStatus(t){el('scoreSaveStatus').textContent=t}
 function updateScoreShape(input){const wrap=input.closest('.score-wrap');if(!wrap)return;wrap.classList.remove('net-birdie','net-eagle','net-bogey','net-double');const h=Number(input.dataset.hole),raw=input.value.trim();if(!raw||!Number.isInteger(Number(raw))||Number(raw)<1||Number(raw)>30)return;const par=teeHoles.find(x=>x.hole_number===h)?.par;if(par==null)return;const all=[...el('scoreRows').querySelectorAll('input[data-hole="'+h+'"]')];const playerIndex=all.indexOf(input);const roster=orderedRoster();if(playerIndex<0||roster.length<2)return;const auto=!!matchTee&&roster.every(p=>p.index!=null&&p.index!=='');const handicaps=roster.map(p=>matchTee&&p.index!=null&&p.index!==''?courseHcp(p.index):p.handicap);if(handicaps.some(h=>!Number.isInteger(h)))return;const base=Math.min(...handicaps);const si=strokeIndices.find(x=>x.hole_number===h)?.stroke_index;if(si==null)return;const net=Number(raw)-strokeCount(handicaps[playerIndex]-base,si);const diff=net-Number(par);const cls=diff<=-2?'net-eagle':diff===-1?'net-birdie':diff===1?'net-bogey':diff>=2?'net-double':'';if(cls)wrap.classList.add(cls)}
 function scheduleHoleSave(h){if(posted())return;clearTimeout(saveTimers.get(h));const inputs=[...el('scoreRows').querySelectorAll('input[data-hole="'+h+'"]')];if(inputs.length!==Number(match.player_count||2))return;const vals=inputs.map(x=>x.value.trim());if(vals.some(v=>v==='')){updateSaveStatus('Hole '+h+': enter both scores to auto-save.');return}if(vals.some(v=>!Number.isInteger(Number(v))||Number(v)<1||Number(v)>30)){updateSaveStatus('Hole '+h+': scores must be whole numbers from 1 to 30.');return}updateSaveStatus('Hole '+h+': saving shortly…');saveTimers.set(h,setTimeout(()=>autoSaveHole(h),650))}
@@ -169,8 +169,8 @@ if(!confirm('Finalize and post this '+holes+'-hole match? All saved scores will 
 button.textContent='Posting match…';
 const {data,error:e}=await db.rpc('finalize_complete_match',{p_match:id});
 if(e)throw e;
-if(data!=='posted')throw Error('The database did not confirm finalization.');
-match.status='posted';await refresh();await loadMatches();msg('Match posted successfully. Player records will include this result when the player profile is opened.');
+if(data!=='completed')throw Error('The database did not confirm finalization.');
+match.status='completed';await refresh();await loadMatches();msg('Match posted successfully. Player records will include this result when the player profile is opened.');
 }catch(e){updateSaveStatus('Posting failed: '+(e?.message||String(e)));error(e)}
 finally{button.disabled=false;button.textContent='Finalize / Post Match'}
 };
