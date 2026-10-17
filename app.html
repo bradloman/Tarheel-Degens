@@ -33,7 +33,7 @@ const {data:entries,error:e}=await q;if(e)throw e;
 const ids=[...new Set((entries||[]).map(x=>x.match_id))];
 if(!ids.length){career.textContent='No matches recorded yet.';return}
 const {data:matches,error:me}=await db.from('matches').select('id,match_date,game_type,status,hole_count,course_id').in('id',ids).order('match_date',{ascending:false});if(me)throw me;
-const posted=(matches||[]).filter(m=>Number(m.hole_count)===18&&['posted','completed','finalized'].includes(String(m.status).toLowerCase()));
+const posted=(matches||[]).filter(m=>[9,18].includes(Number(m.hole_count))&&['posted','completed','finalized'].includes(String(m.status).toLowerCase()));
 const evaluated=await Promise.all(posted.slice(0,40).map(async m=>{
 try{
 const [mp,gp,hs,gs,teams]=await Promise.all([
@@ -51,15 +51,15 @@ const gross=x=>{const r=scoreRows.filter(y=>y.id===x.id&&y.guest===x.guest&&Numb
 if(!self)return {m,result:null};
 const ownGross=gross(self),net=ownGross===null?null:ownGross-self.hcp*(holes/18);
 let result=null;
-if(holes===18&&roster.length===2&&ownGross!==null){
+if([9,18].includes(holes)&&roster.length===2&&ownGross!==null){
 const opponent=roster.find(x=>x!==self),theirGross=gross(opponent);
 if(theirGross!==null){
 const {data:strokeData,error:strokeError}=await db.from('match_hole_strokes').select('hole_number,stroke_index').eq('match_id',m.id);
-if(!strokeError&&strokeData?.length===18){
+if(!strokeError&&strokeData?.length===holes){
 const si=new Map(strokeData.map(x=>[Number(x.hole_number),Number(x.stroke_index)]));
 const base=Math.min(self.hcp,opponent.hcp);
 const net=(x,h)=>{const raw=scoreRows.find(y=>y.id===x.id&&y.guest===x.guest&&Number(y.hole_number)===h)?.gross_strokes;const allowance=x.hcp-base,index=si.get(h);if(raw==null||!index)return null;const strokes=allowance>=0?Math.floor(allowance/18)+(index<=allowance%18?1:0):-Math.floor(-allowance/18)-(index<=(-allowance)%18?1:0);return Number(raw)-strokes};
-let lead=0,valid=true;for(let h=1;h<=18;h++){const a=net(self,h),b=net(opponent,h);if(a===null||b===null){valid=false;break}lead+=a<b?1:a>b?-1:0}if(valid)result=lead>0?'win':lead<0?'loss':'tie';
+let lead=0,valid=true;for(let h=1;h<=holes;h++){const a=net(self,h),b=net(opponent,h);if(a===null||b===null){valid=false;break}lead+=a<b?1:a>b?-1:0}if(valid)result=lead>0?'win':lead<0?'loss':'tie';
 }
 }
 }
@@ -68,9 +68,9 @@ return {m,result,gross:ownGross,net,team:roster.length===4};
 }));
 const scored=evaluated.filter(x=>x.result),wins=scored.filter(x=>x.result==='win').length,losses=scored.filter(x=>x.result==='loss').length,ties=scored.filter(x=>x.result==='tie').length;
 const avg=key=>{const a=evaluated.filter(x=>x[key]!=null&&x.m.hole_count===18).map(x=>x[key]);return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'—'};
-career.innerHTML='<h3>Playing record · 18 holes</h3><div class="profile-stats-grid">'+[['Played',scored.length],['Wins',wins],['Losses',losses],['Ties',ties],['Win %',scored.length?Math.round(wins/scored.length*100)+'%':'—'],['Avg Gross',avg('gross')],['Avg Net',avg('net')]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Playing wins/losses count only posted, fully scored 18-hole singles matches and use net hole-by-hole match play, not aggregate strokes. Team match records and betting outcomes are calculated separately in a future update. Averages use fully scored 18-hole rounds. '+(posted.length>40?'Only the 40 most recent completed matches were analyzed.':'')+'</p>';
+career.innerHTML='<h3>Playing record · 9 &amp; 18 holes</h3><div class="profile-stats-grid">'+[['Played',scored.length],['9-hole',scored.filter(x=>Number(x.m.hole_count)===9).length],['18-hole',scored.filter(x=>Number(x.m.hole_count)===18).length],['Wins',wins],['Losses',losses],['Ties',ties],['Win %',scored.length?Math.round(wins/scored.length*100)+'%':'—'],['Avg Gross',avg('gross')],['Avg Net',avg('net')]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Playing wins/losses count posted, fully scored 9-hole and 18-hole singles matches, using net hole-by-hole match play. Team match records and betting outcomes are calculated separately. Gross and net averages use 18-hole rounds only. '+(posted.length>40?'Only the 40 most recent completed matches were analyzed.':'')+'</p>';
 const tally=field=>{const out={};for(const item of scored){const m=item.m;const key=field==='year'?String(m.match_date).slice(0,4):m.game_type;out[key]=(out[key]||0)+1}return Object.entries(out).sort((a,b)=>b[0].localeCompare(a[0])).map(([key,n])=>'<div class="profile-record-row"><span>'+safe(key)+'</span><strong>'+n+' played</strong></div>').join('')||'<p class="muted">No completed matches yet.</p>'};
-years.innerHTML=tally('year');games.innerHTML=tally('game');career.innerHTML+='<h3>Betting record</h3><p class="muted">Money won and lost will be shown separately from match wins and losses once individual wagers and presses are connected.</p>';
+years.innerHTML=tally('year')+'<h3>Record by match length</h3>'+[9,18].map(n=>{const rows=scored.filter(x=>Number(x.m.hole_count)===n);const w=rows.filter(x=>x.result==='win').length,l=rows.filter(x=>x.result==='loss').length,t=rows.filter(x=>x.result==='tie').length;return '<div class="profile-record-row"><span>'+n+' holes</span><strong>'+w+' W · '+l+' L · '+t+' T</strong></div>'}).join('');games.innerHTML=tally('game');career.innerHTML+='<h3>Betting record</h3><p class="muted">Money won and lost will be shown separately from match wins and losses once individual wagers and presses are connected.</p>';
 recent.innerHTML=(matches||[]).slice(0,10).map(m=>'<div class="profile-record-row"><span><strong>'+safe(m.game_type)+'</strong><br><small>'+safe(m.match_date)+' · '+safe(m.status)+'</small></span><button class="secondary" type="button" data-profile-match="'+safe(m.id)+'">Scorecard</button></div>').join('');
 recent.querySelectorAll('[data-profile-match]').forEach(b=>b.onclick=()=>openMatch(b.dataset.profileMatch));
 }catch(e){career.textContent='Could not load match history: '+(e?.message||String(e))}
