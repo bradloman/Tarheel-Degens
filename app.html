@@ -32,7 +32,7 @@ const q=kind==='registered'?db.from('match_players').select('match_id,course_han
 const {data:entries,error:e}=await q;if(e)throw e;
 const ids=[...new Set((entries||[]).map(x=>x.match_id))];
 if(!ids.length){career.textContent='No matches recorded yet.';return}
-const {data:matches,error:me}=await db.from('matches').select('id,match_date,game_type,status,hole_count,course_id').in('id',ids).order('match_date',{ascending:false});if(me)throw me;
+const {data:matches,error:me}=await db.from('matches').select('id,match_date,game_type,status,hole_count,course_id,stake').in('id',ids).order('match_date',{ascending:false});if(me)throw me;
 const posted=(matches||[]).filter(m=>[9,18].includes(Number(m.hole_count))&&['posted','completed','finalized'].includes(String(m.status).toLowerCase()));
 const evaluated=await Promise.all(posted.slice(0,40).map(async m=>{
 try{
