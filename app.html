@@ -24,6 +24,51 @@ async function loadPlayerDirectory(){const {data,error:e}=await db.from('players
 function openPlayerDetail(p,kind){el('playerDirectory').closest('.card').classList.add('hidden');el('playerDetail').classList.remove('hidden');el('playerDetailName').textContent=p.display_name;el('playerDetailStats').innerHTML='<p><strong>Handicap index:</strong> '+safe(p.handicap_index??'Not set')+'</p><p><strong>Home club:</strong> '+safe(p.home_club||'Not set')+'</p><p class="muted">'+(kind==='directory'?'Profile available · account not yet claimed':'Registered player')+'</p>';loadPlayerHistory(p,kind)}
 el('backToPlayers').onclick=()=>{el('playerDetail').classList.add('hidden');el('playerDirectory').closest('.card').classList.remove('hidden')};
 async function showPlayerProfile(id){try{const {data:p,error:e}=await db.from('players').select('id,display_name,handicap_index,home_club').eq('id',id).single();if(e)throw e;openPlayerDetail(p,'registered')}catch(e){error(e)}}
+
+async function profileNassauBetting(m,p,kind){
+if(m.game_type!=='nassau')return null;
+const names=['match_players','guest_players','hole_scores','guest_hole_scores','match_team_players','match_hole_strokes','match_nassau_presses'];
+const fields=['player_id,course_handicap','id,directory_entry_id,course_handicap','player_id,hole_number,gross_strokes','guest_id,hole_number,gross_strokes','player_id,guest_id,team_number','hole_number,stroke_index','segment,start_hole,undone_at'];
+const rows=await Promise.all(names.map((t,i)=>db.from(t).select(fields[i]).eq('match_id',m.id)));
+if(rows.some(r=>r.error))return null;
+const [mp,gp,hs,gs,teams,indices,presses]=rows.map(r=>r.data||[]);
+const roster=[...mp.map(x=>({id:x.player_id,guest:false,hcp:Number(x.course_handicap)})),...gp.map(x=>({id:x.id,guest:true,hcp:Number(x.course_handicap),directory:x.directory_entry_id}))];
+const self=roster.find(x=>kind==='registered'?!x.guest&&x.id===p.id:x.guest&&x.directory===p.id);
+const n=Number(m.hole_count);
+if(!self||![2,4].includes(roster.length)||roster.some(x=>!Number.isInteger(x.hcp))||indices.length!==n)return null;
+const team=x=>teams.find(t=>x.guest?t.guest_id===x.id:t.player_id===x.id)?.team_number;
+const myTeam=team(self);
+if(roster.length===4&&![1,2].includes(myTeam))return null;
+const left=roster.length===2?[self]:roster.filter(x=>team(x)===myTeam);
+const right=roster.filter(x=>!left.includes(x));
+if(left.length!==roster.length/2||right.length!==roster.length/2)return null;
+const si=new Map(indices.map(x=>[Number(x.hole_number),Number(x.stroke_index)])),base=Math.min(...roster.map(x=>x.hcp));
+const net=(x,h)=>{
+const r=(x.guest?gs:hs).find(z=>Number(z.hole_number)===h&&(x.guest?z.guest_id:z.player_id)===x.id);
+const raw=Number(r?.gross_strokes),index=si.get(h);
+if(!Number.isInteger(raw)||raw<1||raw>30||!Number.isInteger(index))return null;
+const a=x.hcp-base,st=a>=0?Math.floor(a/18)+(index<=a%18?1:0):-Math.floor(-a/18)-(index<=(-a)%18?1:0);
+return raw-st;
+};
+const holes=new Map();
+for(let h=1;h<=n;h++){
+const a=left.map(x=>net(x,h)),b=right.map(x=>net(x,h));
+if([...a,...b].some(v=>v===null))return null;
+holes.set(h,[Math.min(...a),Math.min(...b)]);
+}
+const segments=n===18?[['F',1,9],['B',10,18],['O',1,18]]:[['9',1,n]];
+let amount=0;
+for(const [segment,start,end] of segments){
+const starts=[start,...presses.filter(x=>x.segment===segment&&!x.undone_at&&Number(x.start_hole)>=start&&Number(x.start_hole)<=end).map(x=>Number(x.start_hole))];
+for(const first of starts){
+let lead=0;
+for(let h=first;h<=end;h++){const pair=holes.get(h);lead+=pair[0]<pair[1]?1:pair[0]>pair[1]?-1:0}
+amount+=Math.sign(lead)*Number(m.stake);
+}
+}
+return {m,amount};
+}
+
 async function loadPlayerHistory(p,kind){
 const career=el('playerCareerStats'),years=el('playerYearStats'),games=el('playerGameStats'),recent=el('playerRecentMatches');
 career.textContent='Loading match history…';years.textContent='';games.textContent='';recent.textContent='';
