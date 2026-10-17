@@ -33,7 +33,7 @@ const {data:entries,error:e}=await q;if(e)throw e;
 const ids=[...new Set((entries||[]).map(x=>x.match_id))];
 if(!ids.length){career.textContent='No matches recorded yet.';return}
 const {data:matches,error:me}=await db.from('matches').select('id,match_date,game_type,status,hole_count,course_id').in('id',ids).order('match_date',{ascending:false});if(me)throw me;
-const posted=(matches||[]).filter(m=>['posted','completed','finalized'].includes(String(m.status).toLowerCase()));
+const posted=(matches||[]).filter(m=>Number(m.hole_count)===18&&['posted','completed','finalized'].includes(String(m.status).toLowerCase()));
 const evaluated=await Promise.all(posted.slice(0,40).map(async m=>{
 try{
 const [mp,gp,hs,gs,teams]=await Promise.all([
@@ -51,18 +51,26 @@ const gross=x=>{const r=scoreRows.filter(y=>y.id===x.id&&y.guest===x.guest&&Numb
 if(!self)return {m,result:null};
 const ownGross=gross(self),net=ownGross===null?null:ownGross-self.hcp*(holes/18);
 let result=null;
-if(roster.length===2&&ownGross!==null){
+if(holes===18&&roster.length===2&&ownGross!==null){
 const opponent=roster.find(x=>x!==self),theirGross=gross(opponent);
-if(theirGross!==null){const ownNet=ownGross-self.hcp*(holes/18),theirNet=theirGross-opponent.hcp*(holes/18);result=ownNet<theirNet?'win':ownNet>theirNet?'loss':'tie'}
+if(theirGross!==null){
+const {data:strokeData,error:strokeError}=await db.from('match_hole_strokes').select('hole_number,stroke_index').eq('match_id',m.id);
+if(!strokeError&&strokeData?.length===18){
+const si=new Map(strokeData.map(x=>[Number(x.hole_number),Number(x.stroke_index)]));
+const base=Math.min(self.hcp,opponent.hcp);
+const net=(x,h)=>{const raw=scoreRows.find(y=>y.id===x.id&&y.guest===x.guest&&Number(y.hole_number)===h)?.gross_strokes;const allowance=x.hcp-base,index=si.get(h);if(raw==null||!index)return null;const strokes=allowance>=0?Math.floor(allowance/18)+(index<=allowance%18?1:0):-Math.floor(-allowance/18)-(index<=(-allowance)%18?1:0);return Number(raw)-strokes};
+let lead=0,valid=true;for(let h=1;h<=18;h++){const a=net(self,h),b=net(opponent,h);if(a===null||b===null){valid=false;break}lead+=a<b?1:a>b?-1:0}if(valid)result=lead>0?'win':lead<0?'loss':'tie';
+}
+}
 }
 return {m,result,gross:ownGross,net,team:roster.length===4};
 }catch(_){return {m,result:null}}
 }));
 const scored=evaluated.filter(x=>x.result),wins=scored.filter(x=>x.result==='win').length,losses=scored.filter(x=>x.result==='loss').length,ties=scored.filter(x=>x.result==='tie').length;
 const avg=key=>{const a=evaluated.filter(x=>x[key]!=null&&x.m.hole_count===18).map(x=>x[key]);return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'—'};
-career.innerHTML='<div class="profile-stats-grid">'+[['Played',posted.length],['Wins',wins],['Losses',losses],['Ties',ties],['Win %',scored.length?Math.round(wins/scored.length*100)+'%':'—'],['Avg Gross',avg('gross')],['Avg Net',avg('net')]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Wins/losses currently reflect completed, fully scored singles matches using total net strokes. Team matches and Nassau bet outcomes are not yet counted in wins/losses. Averages use fully scored 18-hole rounds. '+(posted.length>40?'Only the 40 most recent completed matches were analyzed.':'')+'</p>';
-const tally=field=>{const out={};for(const m of posted){const key=field==='year'?String(m.match_date).slice(0,4):m.game_type;out[key]=(out[key]||0)+1}return Object.entries(out).sort((a,b)=>b[0].localeCompare(a[0])).map(([key,n])=>'<div class="profile-record-row"><span>'+safe(key)+'</span><strong>'+n+' played</strong></div>').join('')||'<p class="muted">No completed matches yet.</p>'};
-years.innerHTML=tally('year');games.innerHTML=tally('game');
+career.innerHTML='<h3>Playing record · 18 holes</h3><div class="profile-stats-grid">'+[['Played',scored.length],['Wins',wins],['Losses',losses],['Ties',ties],['Win %',scored.length?Math.round(wins/scored.length*100)+'%':'—'],['Avg Gross',avg('gross')],['Avg Net',avg('net')]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Playing wins/losses count only posted, fully scored 18-hole singles matches and use net hole-by-hole match play, not aggregate strokes. Team match records and betting outcomes are calculated separately in a future update. Averages use fully scored 18-hole rounds. '+(posted.length>40?'Only the 40 most recent completed matches were analyzed.':'')+'</p>';
+const tally=field=>{const out={};for(const item of scored){const m=item.m;const key=field==='year'?String(m.match_date).slice(0,4):m.game_type;out[key]=(out[key]||0)+1}return Object.entries(out).sort((a,b)=>b[0].localeCompare(a[0])).map(([key,n])=>'<div class="profile-record-row"><span>'+safe(key)+'</span><strong>'+n+' played</strong></div>').join('')||'<p class="muted">No completed matches yet.</p>'};
+years.innerHTML=tally('year');games.innerHTML=tally('game');career.innerHTML+='<h3>Betting record</h3><p class="muted">Money won and lost will be shown separately from match wins and losses once individual wagers and presses are connected.</p>';
 recent.innerHTML=(matches||[]).slice(0,10).map(m=>'<div class="profile-record-row"><span><strong>'+safe(m.game_type)+'</strong><br><small>'+safe(m.match_date)+' · '+safe(m.status)+'</small></span><button class="secondary" type="button" data-profile-match="'+safe(m.id)+'">Scorecard</button></div>').join('');
 recent.querySelectorAll('[data-profile-match]').forEach(b=>b.onclick=()=>openMatch(b.dataset.profileMatch));
 }catch(e){career.textContent='Could not load match history: '+(e?.message||String(e))}
