@@ -15,6 +15,12 @@
 .match-player-name{min-width:0;overflow-wrap:anywhere}.match-player-index{font-size:.88rem;color:#64748b;font-variant-numeric:tabular-nums;text-align:right}
 #matchPlayerSelectionStatus{font-size:.88rem;margin:9px 0 14px}
 @media(max-width:380px){.match-fields-grid{gap:12px 9px}.match-fields-grid input,.match-fields-grid select{padding:8px;font-size:16px}.match-player-option{gap:9px;padding:10px}}
+
+/* Keep iOS date text aligned and sized like adjacent match inputs */
+.match-fields-grid input[type="date"]{font-family:inherit;font-size:16px;font-weight:400;line-height:normal;text-align:left;color:#172b45;background:#fff;padding:9px 12px;-webkit-appearance:none;appearance:none;display:flex;align-items:center}
+.match-fields-grid input[type="date"]::-webkit-date-and-time-value{text-align:left;min-height:1em;margin:0}
+.match-fields-grid input[type="date"]::-webkit-datetime-edit{display:inline-block;padding:0;text-align:left;line-height:normal}
+.match-fields-grid input[type="date"]::-webkit-calendar-picker-indicator{margin-left:auto;opacity:.65}
 </style>
 </head><body><header><h1>⛳ Tarheel Degens</h1><div>Carolina Blue • Live scoring test</div></header><main>
 <div id="message" class="status">Loading…</div>
