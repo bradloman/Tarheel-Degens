@@ -130,31 +130,10 @@ return {m,amount};
 
 async function profileQuotaBetting(m,p,kind){
 if(m.game_type!=='quota')return null;
-const queries=await Promise.all([
-db.from('match_players').select('player_id,course_handicap,players(handicap_index)').eq('match_id',m.id),
-db.from('guest_players').select('id,directory_entry_id,course_handicap,handicap_index').eq('match_id',m.id),
-db.from('hole_scores').select('player_id,hole_number,gross_strokes').eq('match_id',m.id),
-db.from('guest_hole_scores').select('guest_id,hole_number,gross_strokes').eq('match_id',m.id),
-db.from('course_holes').select('hole_number,par').eq('tee_id',m.tee_id),
-db.from('course_tees').select('slope_rating,course_rating,par').eq('id',m.tee_id).single(),
-db.from('match_quota_payouts').select('place,percentage').eq('match_id',m.id).order('place')
-]);
-if(queries.some(x=>x.error))return null;
-const [mp,gp,hs,gs,pars,tee,shares]=queries.map(x=>x.data);
-const holes=Number(m.hole_count),parMap=new Map(pars.map(x=>[Number(x.hole_number),Number(x.par)]));
-if(![9,18].includes(holes)||parMap.size<holes||!shares.length)return null;
-const course=index=>index==null?null:Math.floor(Number(index)*Number(tee.slope_rating)/113+Number(tee.course_rating)-Number(tee.par)+0.5);
-const roster=[...mp.map(x=>({id:x.player_id,guest:false,directory:null,full:course(x.players?.handicap_index)??Number(x.course_handicap)})),...gp.map(x=>({id:x.id,guest:true,directory:x.directory_entry_id,full:course(x.handicap_index)??Number(x.course_handicap)}))];
-if(roster.length!==Number(m.player_count))return null;
-const pointValue=d=>d>=2?0:d===1?1:d===0?2:d===-1?4:d===-2?8:16;
-const ranked=roster.map(x=>{const handicap=holes===9?Math.round(x.full/2):x.full,quota=(holes===9?18:36)-handicap;let earned=0;for(let h=1;h<=holes;h++){const score=(x.guest?gs:hs).find(s=>Number(s.hole_number)===h&&(x.guest?s.guest_id:s.player_id)===x.id),strokes=Number(score?.gross_strokes),par=parMap.get(h);if(!Number.isInteger(strokes)||strokes<1||!Number.isFinite(par))return {...x,incomplete:true};earned+=pointValue(strokes-par)}return {...x,handicap,quota,earned,total:earned-quota}}).sort((a,b)=>(b.total??-Infinity)-(a.total??-Infinity));
-if(ranked.some(x=>x.incomplete||!Number.isFinite(x.total)))return null;
-const cents=Math.round(Number(m.stake)*ranked.length*100),alloc=shares.map(x=>Math.round(cents*Number(x.percentage)/100));
-alloc[alloc.length-1]+=cents-alloc.reduce((a,b)=>a+b,0);
-const payouts=ranked.map((x,i)=>{let first=i,last=i;while(first>0&&ranked[first-1].total===x.total)first--;while(last+1<ranked.length&&ranked[last+1].total===x.total)last++;const prize=alloc.slice(first,last+1).reduce((a,b)=>a+b,0),count=last-first+1;return {...x,place:first+1,payoutCents:Math.floor(prize/count)+(i-first<prize%count?1:0)}});
-const self=payouts.find(x=>kind==='registered'?!x.guest&&x.id===p.id:x.guest&&x.directory===p.id);
-if(!self)return null;
-return {m,amount:(self.payoutCents-Math.round(Number(m.stake)*100))/100,payout:self.payoutCents/100,buyin:Number(m.stake),place:self.place,field:ranked.length,quota:self.quota,points:self.earned,quotaScore:self.total,result:self.place===1?'win':'loss'};
+const key=kind==='registered'?'player_id':'directory_entry_id';
+const {data:r,error:e}=await db.from('quota_match_results').select('finishing_place,quota_target,earned_points,quota_score,gross_payout_cents,buyin_cents,net_cents').eq('match_id',m.id).eq(key,p.id).maybeSingle();
+if(e||!r)return null;
+return {m,amount:Number(r.net_cents)/100,payout:Number(r.gross_payout_cents)/100,buyin:Number(r.buyin_cents)/100,place:r.finishing_place,field:Number(m.player_count),quota:r.quota_target,points:r.earned_points,quotaScore:r.quota_score,result:r.finishing_place===1?'win':'loss'};
 }
 async function loadPlayerHistory(p,kind){
 const career=el('playerCareerStats'),years=el('playerYearStats'),games=el('playerGameStats'),recent=el('playerRecentMatches');
@@ -162,7 +141,10 @@ career.textContent='Loading match history…';years.textContent='';games.textCon
 try{
 const q=kind==='registered'?db.from('match_players').select('match_id,course_handicap').eq('player_id',p.id):db.from('guest_players').select('id,match_id,course_handicap').eq('directory_entry_id',p.id);
 const {data:entries,error:e}=await q;if(e)throw e;
-const ids=[...new Set((entries||[]).map(x=>x.match_id))];
+const resultKey=kind==='registered'?'player_id':'directory_entry_id';
+const {data:quotaEntries,error:quotaEntryError}=await db.from('quota_match_results').select('match_id').eq(resultKey,p.id);
+if(quotaEntryError)throw quotaEntryError;
+const ids=[...new Set([...(entries||[]).map(x=>x.match_id),...(quotaEntries||[]).map(x=>x.match_id)])];
 if(!ids.length){career.textContent='No matches recorded yet.';return}
 const {data:matches,error:me}=await db.from('matches').select('id,match_date,game_type,status,hole_count,course_id,tee_id,stake').in('id',ids).order('match_date',{ascending:false});if(me)throw me;
 const posted=(matches||[]).filter(m=>[9,18].includes(Number(m.hole_count))&&['posted','completed','finalized'].includes(String(m.status).toLowerCase()));
