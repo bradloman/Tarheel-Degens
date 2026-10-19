@@ -425,13 +425,7 @@ function highLowLeadText(points,groups){
 }
 function renderHighLowPointsOnly(){
  const snap=highLowSnapshot();if(!snap)return;
- const defs=match.hole_count===18?[['Front 9',1,9],['Back 9',10,18],['Overall',1,18]]:[['Nine Holes',1,match.hole_count]];
- const box=el('bets');
- box.innerHTML='<h3>High/Low · Combined points</h3>'+defs.map(([name,a,b])=>{
-  const total=[0,0];let played=0;
-  for(let h=a;h<=b;h++){const x=snap.hole(h);if(!x)break;total[0]+=x.points[0];total[1]+=x.points[1];played++;}
-  return '<div style="padding:10px 0;border-bottom:1px solid #dce7f0"><strong>'+name+'</strong><div>'+(!played?'Not started':highLowLeadText(total,snap.groups))+'</div><small>'+played+' of '+(b-a+1)+' holes scored'+(played===b-a+1?' · FINAL ✓':'')+'</small></div>';
- }).join('');
+ const box=el('bets');box.innerHTML='';
  for(const cell of el('scoreRows').querySelectorAll('[data-bet-hole]')){
   const h=Number(cell.dataset.betHole);
   let t1=0,t2=0,complete=true;
@@ -491,12 +485,13 @@ function renderHighLowPresses(){
   const bet=bets[i],r=pointState(bet.start_hole,18),label=i===0?'Original match':'Press '+i;
   const status=r.last<bet.start_hole?'Not started':r.diff===0?'Tied '+r.a+'-'+r.b:highLowLeadText([r.a,r.b],snap.groups);
   const done=r.last===18||Math.abs(r.diff)>2*Math.max(0,18-r.last);
-  rows.push('<div class="press-item"><strong>'+label+'</strong> · Hole '+bet.start_hole+'–18 · '+status+(done?' · FINAL ✓':'')+(i>0&&!posted()&&r.last<bet.start_hole?'<button type="button" data-undo-high-low="'+safe(bet.id)+'">Undo Press</button>':'')+'</div>');
+  if(i>0&&!posted()&&r.last<bet.start_hole)rows.push('<div class="press-item"><strong>Press '+i+'</strong> · <button type="button" data-undo-high-low="'+safe(bet.id)+'">Undo Press</button></div>');
   if(!posted()&&!done&&Math.abs(r.diff)>=4&&r.last>=bet.start_hole&&r.last<18&&!active.some(p=>p.parent_id===bet.id&&p.start_hole===r.last+1)){
    options.push({parent:bet.id,start:r.last+1,label:label+' · '+safe(teamLastNames(snap.groups[r.diff>0?1:0]))+' down '+Math.abs(r.diff)+' · Starts hole '+(r.last+1)});
   }
  }
- el('presses').innerHTML=rows.join('')+(options.length?'<div class="press-options"><strong>Eligible High/Low presses</strong><p>Select presses agreed on at the tee box.</p>'+options.map((o,i)=>'<label class="press-option"><input type="checkbox" data-high-low-choice="'+i+'"> '+o.label+'</label>').join('')+'<button type="button" id="activateHighLowPresses">Activate Selected Presses</button></div>':'');
+ el('presses').innerHTML=(rows.length?'<div class="muted">Press controls</div>'+rows.join(''):'')+(options.length?'<div class="press-options"><strong>Eligible High/Low presses</strong><p>Select presses agreed on at the tee box.</p>'+options.map((o,i)=>'<label class="press-option"><input type="checkbox" data-high-low-choice="'+i+'"> '+o.label+'</label>').join('')+'<button type="button" id="activateHighLowPresses">Activate Selected Presses</button></div>':'');
+ const betStatusHeading=el('bets').previousElementSibling;if(betStatusHeading)betStatusHeading.style.display=(rows.length||options.length)?'':'none';
  for(const cell of el('scoreRows').querySelectorAll('[data-press-hole]')){
   const h=Number(cell.dataset.pressHole),lines=[];
   active.forEach((p,i)=>{if(h<p.start_hole)return;const r=pointState(p.start_hole,h);if(r.last<h)return;lines.push('<span class="high-low-score">P'+(i+1)+' '+r.a+'-'+r.b+'</span>')});
