@@ -50,7 +50,7 @@
 .profile-record-grid>:first-child{min-width:0;overflow-wrap:anywhere}
 .profile-record-head{color:#64748b;font-weight:700;font-size:12px;background:#f2f7fb;border-radius:8px 8px 0 0}
 @media(max-width:420px){.profile-record-grid{gap:4px;font-size:13px;padding:11px 2px}.profile-record-head{font-size:11px}}
-.score-wrap{position:relative}.high-low-mark{position:absolute;right:3px;bottom:1px;font-size:10px;font-weight:800;line-height:1;color:#245b82;pointer-events:none;background:#fff;border-radius:3px;padding:0 2px}</style>
+.score-wrap{position:relative}.high-low-mark{position:absolute;z-index:4;right:5px;bottom:7px;font-size:10px;font-weight:800;line-height:1;color:#245b82;pointer-events:none;background:#fff;border-radius:3px;padding:0 2px}</style>
 </head><body><header><h1>⛳ Tarheel Degens</h1><div>Carolina Blue • Live scoring test</div></header><main>
 <div id="message" class="status">Loading…</div>
 <section id="auth" class="card hidden"><h2>Sign in</h2><p class="muted">Use your email to get a sign-in link. Open the link on this same device.</p><label>Email</label><input id="email" type="email" placeholder="you@example.com"><button id="login">Email me a sign-in link</button></section>
@@ -400,11 +400,12 @@ function renderHighLowPointsOnly(){
  for(const row of el('scoreRows').querySelectorAll('tr')){
   const first=row.querySelector('input[data-hole]');if(!first)continue;
   const h=Number(first.dataset.hole),si=strokeIndices.find(x=>x.hole_number===h)?.stroke_index;
-  row.querySelectorAll('.high-low-mark').forEach(n=>n.remove());
+  row.querySelectorAll('.high-low-mark').forEach(n=>n.remove());row.querySelectorAll('.hole-winning-score').forEach(n=>n.classList.remove('hole-winning-score'));
   if(!Number.isInteger(si))continue;
   const hc=orderedRoster().map(p=>matchTee&&p.index!=null&&p.index!==''?courseHcp(p.index):p.handicap);
   if(hc.some(x=>!Number.isInteger(x)))continue;
   const base=Math.min(...hc),roster=orderedRoster();
+  const teamValues=[];
   for(const group of snap.groups){
    const values=group.map(p=>{
     const input=row.querySelector('input[data-player="'+p.id+'"]');
@@ -412,12 +413,20 @@ function renderHighLowPointsOnly(){
     return {input,net:raw!==''&&Number.isInteger(gross)&&gross>=1&&gross<=30?gross-strokeCount(hc[roster.indexOf(p)]-base,si):null};
    });
    if(values.some(v=>v.net===null))continue;
+   teamValues.push(values);
    const low=Math.min(...values.map(v=>v.net)),high=Math.max(...values.map(v=>v.net));
    for(const v of values){
     const wrap=v.input?.closest('.score-wrap');if(!wrap)continue;
     const marker=document.createElement('span');marker.className='high-low-mark';
     marker.textContent=low===high?'L/H':v.net===low?'L':'H';
     wrap.appendChild(marker);
+   }
+  }
+  if(teamValues.length===2){
+   const lows=teamValues.map(v=>Math.min(...v.map(x=>x.net))),highs=teamValues.map(v=>Math.max(...v.map(x=>x.net)));
+   for(let t=0;t<2;t++){
+    const lowWon=lows[t]<lows[1-t],highWon=highs[t]<highs[1-t];
+    for(const v of teamValues[t])if((lowWon&&v.net===lows[t])||(highWon&&v.net===highs[t]))v.input.closest('.score-wrap')?.classList.add('hole-winning-score');
    }
   }
  }
