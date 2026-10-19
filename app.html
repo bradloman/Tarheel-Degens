@@ -478,6 +478,7 @@ function renderHighLowPresses(){
 function renderHighLow(){
  const original=match.game_type;match.game_type='nassau';
  try{render();}finally{match.game_type=original;}
+ el('scoreHead').querySelector('th.bet-col').textContent='Match';
  const snap=highLowSnapshot();
  el('presses').innerHTML='<p class="muted">High/Low presses are not enabled yet. Four-point press activation is being connected separately.</p>';
  if(!snap){el('bets').innerHTML='<p>Assign two players to each team and enter valid handicaps to see High/Low points.</p>';el('financialSummary').innerHTML='<p class="muted">High/Low betting settlement will be available after press and ledger integration.</p>';return;}
