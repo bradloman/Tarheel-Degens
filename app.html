@@ -392,8 +392,10 @@ function renderHighLowPointsOnly(){
   return '<div style="padding:10px 0;border-bottom:1px solid #dce7f0"><strong>'+name+'</strong><div>'+(!played?'Not started':highLowLeadText(total,snap.groups))+'</div><small>'+played+' of '+(b-a+1)+' holes scored'+(played===b-a+1?' · FINAL ✓':'')+'</small></div>';
  }).join('');
  for(const cell of el('scoreRows').querySelectorAll('[data-bet-hole]')){
-  const h=Number(cell.dataset.betHole),x=snap.hole(h);
-  cell.innerHTML=x?'<span class="bet-line">Low '+(x.low[0]===x.low[1]?'Tie':x.low[0]<x.low[1]?'T1':'T2')+'</span><span class="bet-line">High '+(x.high[0]===x.high[1]?'Tie':x.high[0]<x.high[1]?'T1':'T2')+'</span>':'<span class="muted">—</span>';
+  const h=Number(cell.dataset.betHole);
+  let t1=0,t2=0,complete=true;
+  for(let n=1;n<=h;n++){const x=snap.hole(n);if(!x){complete=false;break;}t1+=x.points[0];t2+=x.points[1];}
+  cell.innerHTML=complete?'<span class="bet-line">'+t1+'-'+t2+'</span>':'<span class="muted">—</span>';
  }
 
  // Determine team Low/High by score-input column, not player-id selectors.
@@ -456,7 +458,7 @@ function renderHighLowPresses(){
  el('presses').innerHTML=rows.join('')+(options.length?'<div class="press-options"><strong>Eligible High/Low presses</strong><p>Select presses agreed on at the tee box.</p>'+options.map((o,i)=>'<label class="press-option"><input type="checkbox" data-high-low-choice="'+i+'"> '+o.label+'</label>').join('')+'<button type="button" id="activateHighLowPresses">Activate Selected Presses</button></div>':'');
  for(const cell of el('scoreRows').querySelectorAll('[data-press-hole]')){
   const h=Number(cell.dataset.pressHole),lines=[];
-  active.forEach((p,i)=>{if(h<p.start_hole)return;const r=pointState(p.start_hole,h);if(r.last<h)return;lines.push('<span class="bet-line">P'+(i+1)+' '+(r.diff===0?'AS':Math.abs(r.diff)+' T'+(r.diff>0?'1':'2'))+'</span>')});
+  active.forEach((p,i)=>{if(h<p.start_hole)return;const r=pointState(p.start_hole,h);if(r.last<h)return;lines.push('<span class="bet-line">P'+(i+1)+' '+r.a+'-'+r.b+'</span>')});
   cell.innerHTML=lines.join('')||'<span class="muted">—</span>';
  }
  el('presses').querySelectorAll('[data-undo-high-low]').forEach(b=>b.onclick=async()=>{
