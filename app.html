@@ -529,7 +529,7 @@ function renderHighLowFinancial(){
  const projected=states.filter(x=>!x.finished).reduce((v,x)=>v+(x.leader===null?0:x.leader===0?stake:-stake),0);
  const money=n=>(n>0?'+':n<0?'-':'')+'$'+Math.abs(n).toFixed(2);
  const names=snap.groups.map(g=>teamLastNames(g));
- target.innerHTML='<p class="muted">$'+stake.toFixed(2)+' per player per bet · '+states.length+' bets</p><div class="quota-summary-grid">'+names.map((name,i)=>{const sign=i===0?1:-1;return '<div class="quota-summary-card"><strong>'+safe(name)+'</strong><div>Projected <strong>'+money((locked+projected)*sign)+'</strong></div><small>Won '+money(locked*sign)+'</small></div>'}).join('')+'</div><div class="quota-summary-table">'+states.map(x=>'<div class="profile-record-row"><span><strong>'+x.label+'</strong> · '+x.a+'-'+x.b+'</span><span>'+(x.finished?'Final':x.last<x.start?'Pending':'Live')+'</span><strong>'+(x.leader===null?'Tied':safe(names[x.leader]))+'</strong></div>').join('')+'</div>';
+ target.innerHTML='<p class="muted">$'+stake.toFixed(2)+' per player per bet · '+states.length+' bets</p><div class="quota-summary-grid">'+names.map((name,i)=>{const sign=i===0?1:-1;return '<div class="quota-summary-card"><strong>'+safe(name)+'</strong><div>Projected <strong>'+money((locked+projected)*sign)+'</strong></div><small>Won '+money(locked*sign)+'</small></div>'}).join('')+'</div><div class="quota-summary-table">'+states.map(x=>'<div class="profile-record-row"><span><strong>'+(x.label==='Match'?'Match':x.label.replace(/^P(\d+)$/,'Press $1'))+'</strong> · '+x.a+'-'+x.b+(x.finished?' ✓':'')+'</span><span>'+(x.finished?'Final':x.last<x.start?'Pending':'Live')+'</span><strong>'+(x.leader===null?'Tied':safe(names[x.leader]))+'</strong></div>').join('')+'</div>';
 }
 
 function renderHighLow(){
