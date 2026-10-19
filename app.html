@@ -41,6 +41,15 @@
 .quota-standings-heading span,.quota-summary-note{font-size:12px;color:#64748b}
 .quota-summary-note{margin-top:12px}
 @media(max-width:420px){.quota-summary-panel{padding:12px}.quota-summary-row{font-size:12px;gap:4px}.quota-summary-head{font-size:10px}}
+
+/* Player profile records: compact five-column statistics */
+.profile-record-table{width:100%;margin:10px 0 20px}
+.profile-record-grid{display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(28px,.48fr)) minmax(54px,.85fr);align-items:center;gap:6px;padding:12px 4px;border-bottom:1px solid #d9e3ec;font-size:14px}
+.profile-record-grid>:not(:first-child){text-align:center;font-variant-numeric:tabular-nums}
+.profile-record-grid>:last-child{text-align:right}
+.profile-record-grid>:first-child{min-width:0;overflow-wrap:anywhere}
+.profile-record-head{color:#64748b;font-weight:700;font-size:12px;background:#f2f7fb;border-radius:8px 8px 0 0}
+@media(max-width:420px){.profile-record-grid{gap:4px;font-size:13px;padding:11px 2px}.profile-record-head{font-size:11px}}
 </style>
 </head><body><header><h1>⛳ Tarheel Degens</h1><div>Carolina Blue • Live scoring test</div></header><main>
 <div id="message" class="status">Loading…</div>
@@ -220,8 +229,11 @@ const scored=evaluated.filter(x=>x.result),wins=scored.filter(x=>x.result==='win
 const avg=key=>{const a=evaluated.filter(x=>x[key]!=null&&x.m.hole_count===18).map(x=>x[key]);return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'—'};
 career.innerHTML='<h3>Playing record · 9 &amp; 18 holes</h3><div class="profile-stats-grid">'+[['Played',scored.length],['9-hole',scored.filter(x=>Number(x.m.hole_count)===9).length],['18-hole',scored.filter(x=>Number(x.m.hole_count)===18).length],['Wins',wins],['Losses',losses],['Ties',ties],['Win %',scored.length?Math.round(wins/scored.length*100)+'%':'—'],['Avg Gross',avg('gross')],['Avg Net',avg('net')]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Playing records include completed Nassau matches and Quota competitions. Quota first-place finishers count as wins; other finishers count as losses. Betting outcomes are calculated separately. Gross and net averages use 18-hole rounds only. '+(posted.length>40?'Only the 40 most recent completed matches were analyzed.':'')+'</p>';
 const displayGameType=value=>String(value||'').replace(/\b[a-z]/g,ch=>ch.toUpperCase());
-const tally=field=>{const out={};for(const item of scored){const m=item.m;const key=field==='year'?String(m.match_date).slice(0,4):m.game_type;(out[key]??=[]).push(item)}return Object.entries(out).sort((a,b)=>b[0].localeCompare(a[0])).map(([key,rows])=>'<div class="profile-record-row"><span>'+safe(field==='year'?key:displayGameType(key))+'</span><strong>'+rows.filter(x=>x.result==='win').length+' W · '+rows.filter(x=>x.result==='loss').length+' L · '+rows.filter(x=>x.result==='tie').length+' T</strong></div>').join('')||'<p class="muted">No completed matches yet.</p>'};
-years.innerHTML=tally('year')+'<h3>Record by match length</h3>'+[9,18].map(n=>{const rows=scored.filter(x=>Number(x.m.hole_count)===n);const w=rows.filter(x=>x.result==='win').length,l=rows.filter(x=>x.result==='loss').length,t=rows.filter(x=>x.result==='tie').length;return '<div class="profile-record-row"><span>'+n+' holes</span><strong>'+w+' W · '+l+' L · '+t+' T</strong></div>'}).join('');games.innerHTML=tally('game');
+const recordTable=(rows,label)=>{if(!rows.length)return '<p class="muted">No completed matches yet.</p>';const head='<div class="profile-record-grid profile-record-head"><span>'+label+'</span><span>W</span><span>L</span><span>T</span><span>Win %</span></div>';return '<div class="profile-record-table">'+head+rows.map(([name,items])=>{const w=items.filter(x=>x.result==='win').length,l=items.filter(x=>x.result==='loss').length,t=items.filter(x=>x.result==='tie').length,pct=items.length?Math.round(w/items.length*100)+'%':'—';return '<div class="profile-record-grid"><span>'+safe(name)+'</span><span>'+w+'</span><span>'+l+'</span><span>'+t+'</span><strong>'+pct+'</strong></div>'}).join('')+'</div>'};
+const grouped=field=>{const out={};for(const item of scored){const key=field==='year'?String(item.m.match_date).slice(0,4):item.m.game_type;(out[key]??=[]).push(item)}return Object.entries(out).sort((a,b)=>b[0].localeCompare(a[0])).map(([key,items])=>[field==='year'?key:displayGameType(key),items])};
+years.innerHTML=recordTable(grouped('year'),'Year')+'<h3>Record by match length</h3>'+recordTable([9,18].map(n=>[n+' holes',scored.filter(x=>Number(x.m.hole_count)===n)]),'Holes');
+games.innerHTML=recordTable(grouped('game'),'Game');
+
 const betting=(await Promise.all(posted.slice(0,40).map(m=>m.game_type==='quota'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.quota??null):profileNassauBetting(m,p,kind)))).filter(x=>x!==null);
 const won=betting.reduce((a,x)=>a+Math.max(0,x.amount),0),lost=betting.reduce((a,x)=>a+Math.max(0,-x.amount),0);
 const money=n=>(n>0?'+':n<0?'-':'')+'$'+Math.abs(n).toFixed(2);
