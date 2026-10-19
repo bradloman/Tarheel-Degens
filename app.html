@@ -526,13 +526,16 @@ function renderHighLowFinancial(){
  const states=highLowBetStates(snap,highLowPresses),stake=Number(match.stake)||0;
  const locked=states.filter(x=>x.finished).reduce((v,x)=>v+(x.leader===null?0:x.leader===0?stake:-stake),0);
  const projected=states.filter(x=>!x.finished).reduce((v,x)=>v+(x.leader===null?0:x.leader===0?stake:-stake),0);
- const money=n=>(n>0?'+':n<0?'-':'')+'
+ const money=n=>(n>0?'+':n<0?'-':'')+'$'+Math.abs(n).toFixed(2);
+ const names=snap.groups.map(g=>teamLastNames(g));
+ target.innerHTML='<h3>High/Low betting summary</h3><p class="muted">$'+stake.toFixed(2)+' per player per bet · '+states.length+' bet'+(states.length===1?'':'s')+'</p><div class="quota-summary-grid">'+names.map((name,i)=>{const sign=i===0?1:-1;return '<div class="quota-summary-card"><strong>'+safe(name)+'</strong><div>Projected net: <strong>'+money((locked+projected)*sign)+'</strong></div><small>Settled: '+money(locked*sign)+'</small></div>'}).join('')+'</div><div class="quota-summary-table">'+states.map(x=>'<div class="profile-record-row"><span>'+x.label+' · '+x.a+'-'+x.b+(x.finished?' · Final':' · Live')+'</span><strong>'+(x.leader===null?'Push':safe(names[x.leader])+' +$'+stake.toFixed(2)+'/player')+'</strong></div>').join('')+'</div>';
+}
+function renderHighLow(){
  const original=match.game_type;match.game_type='nassau';
  try{render();}finally{match.game_type=original;}
- el('scoreHead').querySelector('th.bet-col').textContent='Match';
+ const betHeader=el('scoreHead').querySelector('th.bet-col');if(betHeader)betHeader.textContent='Match';
  const snap=highLowSnapshot();
- el('presses').innerHTML='<p class="muted">High/Low presses are not enabled yet. Four-point press activation is being connected separately.</p>';
- if(!snap){el('bets').innerHTML='<p>Assign two players to each team and enter valid handicaps to see High/Low points.</p>';el('financialSummary').innerHTML='<p class="muted">High/Low betting settlement will be available after press and ledger integration.</p>';return;}
+ if(!snap){el('bets').innerHTML='<p>Assign two players to each team and enter valid handicaps to see High/Low points.</p>';el('financialSummary').innerHTML='<p class="muted">Assign teams and handicaps to calculate betting results.</p>';return;}
  renderHighLowPointsOnly();
  renderHighLowPresses();
  renderHighLowFinancial();
