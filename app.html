@@ -490,9 +490,9 @@ function renderHighLowPresses(){
  for(let i=0;i<bets.length;i++){
   const bet=bets[i],r=pointState(bet.start_hole,18),label=i===0?'Original match':'Press '+i;
   const status=r.last<bet.start_hole?'Not started':r.diff===0?'Tied '+r.a+'-'+r.b:highLowLeadText([r.a,r.b],snap.groups);
-  const done=r.last===18;
+  const done=r.last===18||Math.abs(r.diff)>2*Math.max(0,18-r.last);
   rows.push('<div class="press-item"><strong>'+label+'</strong> · Hole '+bet.start_hole+'–18 · '+status+(done?' · FINAL ✓':'')+(i>0&&!posted()&&r.last<bet.start_hole?'<button type="button" data-undo-high-low="'+safe(bet.id)+'">Undo Press</button>':'')+'</div>');
-  if(!posted()&&Math.abs(r.diff)>=4&&r.last>=bet.start_hole&&r.last<18&&!active.some(p=>p.parent_id===bet.id&&p.start_hole===r.last+1)){
+  if(!posted()&&!done&&Math.abs(r.diff)>=4&&r.last>=bet.start_hole&&r.last<18&&!active.some(p=>p.parent_id===bet.id&&p.start_hole===r.last+1)){
    options.push({parent:bet.id,start:r.last+1,label:label+' · '+safe(teamLastNames(snap.groups[r.diff>0?1:0]))+' down '+Math.abs(r.diff)+' · Starts hole '+(r.last+1)});
   }
  }
@@ -519,7 +519,13 @@ function renderHighLowPresses(){
 
 function highLowBetStates(snap,presses,end=18){
  const bets=[{id:null,start_hole:1},...presses.filter(p=>!p.undone_at)];
- return bets.map((bet,i)=>{let a=0,b=0,last=bet.start_hole-1;for(let h=bet.start_hole;h<=end;h++){const x=snap.hole(h);if(!x)break;a+=x.points[0];b+=x.points[1];last=h;}return {label:i?'P'+i:'Match',start:bet.start_hole,a,b,last,finished:last===18,leader:a>b?0:b>a?1:null};});
+ return bets.map((bet,i)=>{
+  let a=0,b=0,last=bet.start_hole-1;
+  for(let h=bet.start_hole;h<=end;h++){const x=snap.hole(h);if(!x)break;a+=x.points[0];b+=x.points[1];last=h;}
+  const remaining=Math.max(0,18-last),diff=a-b;
+  const finished=last===18||Math.abs(diff)>remaining*2;
+  return {label:i?'P'+i:'Match',start:bet.start_hole,a,b,last,remaining,finished,leader:a>b?0:b>a?1:null};
+ });
 }
 function renderHighLowFinancial(){
  const snap=highLowSnapshot(),target=el('financialSummary');if(!snap||!target)return;
@@ -528,8 +534,9 @@ function renderHighLowFinancial(){
  const projected=states.filter(x=>!x.finished).reduce((v,x)=>v+(x.leader===null?0:x.leader===0?stake:-stake),0);
  const money=n=>(n>0?'+':n<0?'-':'')+'$'+Math.abs(n).toFixed(2);
  const names=snap.groups.map(g=>teamLastNames(g));
- target.innerHTML='<h3>High/Low betting summary</h3><p class="muted">$'+stake.toFixed(2)+' per player per bet · '+states.length+' bet'+(states.length===1?'':'s')+'</p><div class="quota-summary-grid">'+names.map((name,i)=>{const sign=i===0?1:-1;return '<div class="quota-summary-card"><strong>'+safe(name)+'</strong><div>Projected net: <strong>'+money((locked+projected)*sign)+'</strong></div><small>Settled: '+money(locked*sign)+'</small></div>'}).join('')+'</div><div class="quota-summary-table">'+states.map(x=>'<div class="profile-record-row"><span>'+x.label+' · '+x.a+'-'+x.b+(x.finished?' · Final':' · Live')+'</span><strong>'+(x.leader===null?'Push':safe(names[x.leader])+' +$'+stake.toFixed(2)+'/player')+'</strong></div>').join('')+'</div>';
+ target.innerHTML='<p class="muted">$'+stake.toFixed(2)+' per player per bet · '+states.length+' bets</p><div class="quota-summary-grid">'+names.map((name,i)=>{const sign=i===0?1:-1;return '<div class="quota-summary-card"><strong>'+safe(name)+'</strong><div>Projected <strong>'+money((locked+projected)*sign)+'</strong></div><small>Won '+money(locked*sign)+'</small></div>'}).join('')+'</div><div class="quota-summary-table">'+states.map(x=>'<div class="profile-record-row"><span><strong>'+x.label+'</strong> · '+x.a+'-'+x.b+'</span><span>'+(x.finished?'Final':x.last<x.start?'Pending':'Live')+'</span><strong>'+(x.leader===null?'Tied':safe(names[x.leader]))+'</strong></div>').join('')+'</div>';
 }
+
 function renderHighLow(){
  const original=match.game_type;match.game_type='nassau';
  try{render();}finally{match.game_type=original;}
