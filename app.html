@@ -155,6 +155,46 @@ return {m,amount};
 }
 
 
+
+async function profileHighLowBetting(m,p,kind){
+ if(m.game_type!=='high_low'||Number(m.hole_count)!==18)return null;
+ const tables=['match_players','guest_players','hole_scores','guest_hole_scores','match_team_players','match_hole_strokes','match_high_low_presses'];
+ const fields=['player_id,course_handicap,players(handicap_index)','id,directory_entry_id,handicap_index,course_handicap','player_id,hole_number,gross_strokes','guest_id,hole_number,gross_strokes','player_id,guest_id,team_number','hole_number,stroke_index','start_hole,undone_at'];
+ const results=await Promise.all(tables.map((t,i)=>db.from(t).select(fields[i]).eq('match_id',m.id)));
+ if(results.some(r=>r.error))return null;
+ const [mp,gp,hs,gs,teams,indices,presses]=results.map(r=>r.data||[]);
+ const {data:tee,error:te}=await db.from('course_tees').select('slope_rating,course_rating,par').eq('id',m.tee_id).maybeSingle();
+ if(te)return null;
+ const course=index=>tee&&index!=null?Math.floor(Number(index)*Number(tee.slope_rating)/113+Number(tee.course_rating)-Number(tee.par)+0.5):null;
+ const roster=[...mp.map(x=>({id:x.player_id,guest:false,hcp:course(x.players?.handicap_index)??Number(x.course_handicap)})),...gp.map(x=>({id:x.id,guest:true,directory:x.directory_entry_id,hcp:course(x.handicap_index)??Number(x.course_handicap)}))];
+ const self=roster.find(x=>kind==='registered'?!x.guest&&x.id===p.id:x.guest&&x.directory===p.id);
+ if(!self||roster.length!==4||roster.some(x=>!Number.isInteger(x.hcp)))return null;
+ const team=x=>teams.find(t=>x.guest?t.guest_id===x.id:t.player_id===x.id)?.team_number;
+ const mine=team(self),groups=[roster.filter(x=>team(x)===1),roster.filter(x=>team(x)===2)];
+ if(![1,2].includes(mine)||groups.some(g=>g.length!==2))return null;
+ const si=new Map(indices.map(x=>[Number(x.hole_number),Number(x.stroke_index)])),base=Math.min(...roster.map(x=>x.hcp)),points=new Map();
+ for(let h=1;h<=18;h++){
+  const values=groups.map(g=>g.map(x=>{
+   const r=(x.guest?gs:hs).find(z=>Number(z.hole_number)===h&&(x.guest?z.guest_id:z.player_id)===x.id);
+   const gross=Number(r?.gross_strokes),idx=si.get(h),a=x.hcp-base;
+   if(!r||!Number.isInteger(gross)||gross<1||gross>30||!Number.isInteger(idx))return null;
+   return gross-(a>=0?Math.floor(a/18)+(idx<=a%18?1:0):-Math.floor(-a/18)-(idx<=(-a)%18?1:0));
+  }));
+  if(values.some(g=>g.some(x=>x===null)))return null;
+  const lows=values.map(v=>Math.min(...v)),highs=values.map(v=>Math.max(...v));
+  points.set(h,[Number(lows[0]<lows[1])+Number(highs[0]<highs[1]),Number(lows[1]<lows[0])+Number(highs[1]<highs[0])]);
+ }
+ let amount=0,mainResult=null;
+ const starts=[1,...presses.filter(x=>!x.undone_at).map(x=>Number(x.start_hole))];
+ for(const [i,start] of starts.entries()){
+  let lead=0;
+  for(let h=start;h<=18;h++){const pt=points.get(h);lead+=pt[0]-pt[1]}
+  const mineLead=mine===1?lead:-lead;
+  if(i===0)mainResult=mineLead>0?'win':mineLead<0?'loss':'tie';
+  amount+=Math.sign(mineLead)*Number(m.stake||0);
+ }
+ return {m,amount,result:mainResult};
+}
 async function profileQuotaBetting(m,p,kind){
 if(m.game_type!=='quota')return null;
 const key=kind==='registered'?'player_id':'directory_entry_id';
@@ -178,6 +218,7 @@ const posted=(matches||[]).filter(m=>[9,18].includes(Number(m.hole_count))&&['po
 const evaluated=await Promise.all(posted.slice(0,40).map(async m=>{
 try{
 if(m.game_type==='quota'){const quota=await profileQuotaBetting(m,p,kind);return {m,result:quota?.result??null,quota, gross:null,net:null}}
+if(m.game_type==='high_low'){const highLow=await profileHighLowBetting(m,p,kind);return {m,result:highLow?.result??null,highLow,gross:null,net:null}}
 const [mp,gp,hs,gs,teams]=await Promise.all([
 db.from('match_players').select('player_id,course_handicap').eq('match_id',m.id),
 db.from('guest_players').select('id,directory_entry_id,course_handicap').eq('match_id',m.id),
@@ -227,17 +268,17 @@ return {m,result,gross:ownGross,net,team:roster.length===4};
 }));
 const scored=evaluated.filter(x=>x.result),wins=scored.filter(x=>x.result==='win').length,losses=scored.filter(x=>x.result==='loss').length,ties=scored.filter(x=>x.result==='tie').length;
 const avg=key=>{const a=evaluated.filter(x=>x[key]!=null&&x.m.hole_count===18).map(x=>x[key]);return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'—'};
-career.innerHTML='<h3>Playing record · 9 &amp; 18 holes</h3><div class="profile-stats-grid">'+[['Played',scored.length],['9-hole',scored.filter(x=>Number(x.m.hole_count)===9).length],['18-hole',scored.filter(x=>Number(x.m.hole_count)===18).length],['Wins',wins],['Losses',losses],['Ties',ties],['Win %',scored.length?Math.round(wins/scored.length*100)+'%':'—'],['Avg Gross',avg('gross')],['Avg Net',avg('net')]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Playing records include completed Nassau matches and Quota competitions. Quota first-place finishers count as wins; other finishers count as losses. Betting outcomes are calculated separately. Gross and net averages use 18-hole rounds only. '+(posted.length>40?'Only the 40 most recent completed matches were analyzed.':'')+'</p>';
+career.innerHTML='<h3>Playing record · 9 &amp; 18 holes</h3><div class="profile-stats-grid">'+[['Played',scored.length],['9-hole',scored.filter(x=>Number(x.m.hole_count)===9).length],['18-hole',scored.filter(x=>Number(x.m.hole_count)===18).length],['Wins',wins],['Losses',losses],['Ties',ties],['Win %',scored.length?Math.round(wins/scored.length*100)+'%':'—'],['Avg Gross',avg('gross')],['Avg Net',avg('net')]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Playing records include completed Nassau, High/Low and Quota matches. Quota first-place finishers count as wins; other finishers count as losses. Betting outcomes are calculated separately. Gross and net averages use 18-hole rounds only. '+(posted.length>40?'Only the 40 most recent completed matches were analyzed.':'')+'</p>';
 const displayGameType=value=>String(value||'').replace(/\b[a-z]/g,ch=>ch.toUpperCase());
 const recordTable=(rows,label)=>{if(!rows.length)return '<p class="muted">No completed matches yet.</p>';const head='<div class="profile-record-grid profile-record-head"><span>'+label+'</span><span>W</span><span>L</span><span>T</span><span>Win %</span></div>';return '<div class="profile-record-table">'+head+rows.map(([name,items])=>{const w=items.filter(x=>x.result==='win').length,l=items.filter(x=>x.result==='loss').length,t=items.filter(x=>x.result==='tie').length,pct=items.length?Math.round(w/items.length*100)+'%':'—';return '<div class="profile-record-grid"><span>'+safe(name)+'</span><span>'+w+'</span><span>'+l+'</span><span>'+t+'</span><strong>'+pct+'</strong></div>'}).join('')+'</div>'};
 const grouped=field=>{const out={};for(const item of scored){const key=field==='year'?String(item.m.match_date).slice(0,4):item.m.game_type;(out[key]??=[]).push(item)}return Object.entries(out).sort((a,b)=>b[0].localeCompare(a[0])).map(([key,items])=>[field==='year'?key:displayGameType(key),items])};
 years.innerHTML=recordTable(grouped('year'),'Year')+'<h3>Record by match length</h3>'+recordTable([9,18].map(n=>[n+' holes',scored.filter(x=>Number(x.m.hole_count)===n)]),'Holes');
 games.innerHTML=recordTable(grouped('game'),'Game');
 
-const betting=(await Promise.all(posted.slice(0,40).map(m=>m.game_type==='quota'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.quota??null):profileNassauBetting(m,p,kind)))).filter(x=>x!==null);
+const betting=(await Promise.all(posted.slice(0,40).map(m=>m.game_type==='quota'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.quota??null):m.game_type==='high_low'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.highLow??null):profileNassauBetting(m,p,kind)))).filter(x=>x!==null);
 const won=betting.reduce((a,x)=>a+Math.max(0,x.amount),0),lost=betting.reduce((a,x)=>a+Math.max(0,-x.amount),0);
 const money=n=>(n>0?'+':n<0?'-':'')+'$'+Math.abs(n).toFixed(2);
-career.innerHTML+='<h3>Betting record</h3><div class="profile-stats-grid">'+[['Won',money(won)],['Lost',money(-lost)],['Net',money(won-lost)]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Completed Nassau bets (including presses) and Quota prize payouts net of buy-ins. Team Nassau stakes are per person.</p>'+betting.map(x=>'<div class="profile-record-row"><span>'+safe(x.m.match_date)+' · '+safe(displayGameType(x.m.game_type))+'</span><strong>'+money(x.amount)+'</strong></div>').join('');
+career.innerHTML+='<h3>Betting record</h3><div class="profile-stats-grid">'+[['Won',money(won)],['Lost',money(-lost)],['Net',money(won-lost)]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Completed Nassau and High/Low bets (including presses) and Quota prize payouts net of buy-ins. Team Nassau stakes are per person.</p>'+betting.map(x=>'<div class="profile-record-row"><span>'+safe(x.m.match_date)+' · '+safe(displayGameType(x.m.game_type))+'</span><strong>'+money(x.amount)+'</strong></div>').join('');
 recent.innerHTML=(matches||[]).slice(0,10).map(m=>'<div class="profile-record-row"><span><strong>'+safe(displayGameType(m.game_type))+'</strong><br><small>'+safe(m.match_date)+' · '+safe(m.status)+'</small></span><button class="secondary" type="button" data-profile-match="'+safe(m.id)+'">Scorecard</button></div>').join('');
 recent.querySelectorAll('[data-profile-match]').forEach(b=>b.onclick=()=>openMatch(b.dataset.profileMatch));
 }catch(e){career.textContent='Could not load match history: '+(e?.message||String(e))}
