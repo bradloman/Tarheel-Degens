@@ -83,8 +83,9 @@ function renderMatchPlayerChecklist(){
 function setupTeamsRequired(){return el('gameType').value==='better_ball'||el('gameType').value==='nassau'}
 function updateSetupTeams(){
  const ids=[...el('matchPlayerChecklist').querySelectorAll('input[data-match-player]:checked')].map(x=>x.value);
- const enabled=setupTeamsRequired()&&ids.length===4,section=el('setupTeamAssignments');
+ const enabled=setupTeamsRequired()&&(Number(el('playerCount').value)===4||ids.length===4),section=el('setupTeamAssignments');
  section.classList.toggle('hidden',!enabled);if(!enabled)return;
+ if(ids.length!==4){el('setupTeamRows').innerHTML='<p class="muted">Select '+(4-ids.length)+' more player'+(4-ids.length===1?'':'s')+' above to assign teams. Each player’s handicap index will be shown here.</p>';el('setupTeamStatus').textContent=ids.length+'/4 players selected';return;}
  const rows=el('setupTeamRows'),previous=new Map([...rows.querySelectorAll('select[data-setup-team]')].map(x=>[x.dataset.setupTeam,x.value]));
  rows.innerHTML=ids.map((id,i)=>{const entry=[{id:'self',name:el('name').value.trim()||'Me',index:el('index').value},...selectableMatchPlayers].find(p=>p.id===id);
  const name=entry?.name||'Player',idx=formatHandicapIndex(entry?.index),choice=previous.get(id)||(i<2?'1':'2');
