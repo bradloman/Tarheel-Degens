@@ -147,6 +147,13 @@
 
 /* Hammer symbols wrap neatly when a hole has several accepted throws */
 #scoreRows [data-press-hole]{overflow-wrap:anywhere;line-height:1.5}
+
+/* Hammer: compact centered winnings and one icon per accepted throw */
+#scoreRows .bet-status[data-bet-hole],#scoreRows .bet-status[data-press-hole]{text-align:center;vertical-align:middle}
+#scoreRows .bet-status[data-bet-hole]{font-size:clamp(14px,2.9vw,18px);font-weight:700;white-space:nowrap}
+#scoreRows .bet-status[data-press-hole]{font-size:18px;line-height:1.45;overflow-wrap:anywhere}
+#scoreTotals .hammer-net-total .hammer-net-amount{text-align:center;font-size:clamp(14px,2.9vw,18px);font-weight:800;white-space:nowrap}
+#scoreTotals .hammer-net-total th{font-size:13px}
 </style>
 </head><body><header><h1>⛳ Tarheel Degens</h1><div>Carolina Blue • Live scoring test</div></header><main>
 <div id="message" class="status">Loading…</div>
@@ -720,12 +727,31 @@ function renderHammerHoleResults(roster,sides,label){
   const winner=winnerFor(h),value=Number(match.stake)*Math.pow(2,record?.doubles||0);
   const initials=p=>String(p.name||'').trim().split(/\s+/).filter(Boolean).map(part=>part[0].toUpperCase()).join('');
   const winnerLabel=winner>0?(sides[winner-1].length===1?initials(sides[winner-1][0]):'T'+winner):'';
-  cell.textContent=winner===null?'—':winner===0?'Push · $0':winnerLabel+' $'+value.toFixed(2);
+  cell.textContent=winner===null?'—':winner===0?'Push $0':winnerLabel+' $'+Math.round(value).toLocaleString('en-US');
  }
  for(const cell of el('scoreRows').querySelectorAll('[data-press-hole]')){
   const h=Number(cell.dataset.pressHole),count=hammerHoles.find(x=>Number(x.hole_number)===h)?.doubles||0;
   cell.textContent=count?'🔨'.repeat(count):'—';
  }
+ const initials=p=>String(p.name||'').trim().split(/\\s+/).filter(Boolean).map(part=>part[0].toUpperCase()).join('');
+ const shortSide=i=>sides[i].length===1?initials(sides[i][0]):'T'+(i+1);
+ const netFor=(from,to)=>{
+  let net=0,decided=0;
+  for(let h=from;h<=to;h++){
+   const winner=winnerFor(h);
+   if(winner===null)continue;
+   decided++;
+   const record=hammerHoles.find(x=>Number(x.hole_number)===h);
+   const amount=Number(match.stake)*Math.pow(2,record?.doubles||0);
+   if(winner===1)net+=amount;
+   if(winner===2)net-=amount;
+  }
+  return decided===0?'—':net===0?'Even $0':(net>0?shortSide(0):shortSide(1))+' $'+Math.round(Math.abs(net)).toLocaleString('en-US');
+ };
+ const totalRow=(title,a,b)=>'<tr class="score-total-row hammer-net-total"><th>'+title+'</th>'+roster.map(()=>'<td></td>').join('')+'<td class="hammer-net-amount">'+safe(netFor(a,b))+'</td><td></td></tr>';
+ const totals=el('scoreTotals');
+ totals.insertAdjacentHTML('beforeend',totalRow('Front net',1,9)+(Number(match.hole_count)===18?totalRow('Back net',10,18)+totalRow('18 net',1,18):''));
+
 }
 function renderHammerControls(){
  const box=el('hammerControls');box.classList.remove('hidden');
