@@ -138,6 +138,12 @@
  #matchPlayerChecklist.inline-team-mode .inline-team-slot select{font-size:14px!important}
  #setupRosterHead{grid-template-columns:minmax(0,1fr) 38px 110px!important;gap:6px!important}
 }
+
+/* Always show Player and CH headings, with Team only for four-player team formats */
+#setupRosterHead:not(.has-teams){display:grid!important;grid-template-columns:minmax(0,1fr) 60px!important;gap:8px!important;padding:5px 14px 8px 49px!important}
+#setupRosterHead:not(.has-teams) span:nth-child(2){text-align:right!important}
+#setupRosterHead:not(.has-teams) span:last-child{display:none!important}
+@media(max-width:480px){#setupRosterHead:not(.has-teams){padding-left:42px!important;padding-right:12px!important;grid-template-columns:minmax(0,1fr) 50px!important}}
 </style>
 </head><body><header><h1>⛳ Tarheel Degens</h1><div>Carolina Blue • Live scoring test</div></header><main>
 <div id="message" class="status">Loading…</div>
@@ -177,7 +183,7 @@ function updateSetupTeams(){
  const previous=new Map([...document.querySelectorAll('select[data-setup-team]')].map(x=>[x.dataset.setupTeam,x.value]));
  section.classList.toggle('hidden',!enabled);
  el('setupTeamRows').innerHTML='';
- el('matchPlayerChecklist').classList.toggle('inline-team-mode',enabled);el('setupRosterHead').classList.toggle('hidden',!enabled);el('setupRosterHead').style.display=enabled?'grid':'none';
+ el('matchPlayerChecklist').classList.toggle('inline-team-mode',enabled);el('setupRosterHead').classList.remove('hidden');el('setupRosterHead').classList.toggle('has-teams',enabled);el('setupRosterHead').style.display='grid';el('setupRosterHead').querySelector('span:last-child').style.display=enabled?'':'none';
  el('matchPlayerChecklist').querySelectorAll('[data-inline-team]').forEach(slot=>{
   const id=slot.dataset.inlineTeam,checked=ids.includes(id);
   if(!enabled||!checked){slot.innerHTML='';return;}
