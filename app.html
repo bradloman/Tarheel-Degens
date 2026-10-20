@@ -335,6 +335,18 @@ const {data:r,error:e}=await db.from('quota_match_results').select('finishing_pl
 if(e||!r)return null;
 return {m,amount:Number(r.net_cents)/100,payout:Number(r.gross_payout_cents)/100,buyin:Number(r.buyin_cents)/100,place:r.finishing_place,field:Number(m.player_count),quota:r.quota_target,points:r.earned_points,quotaScore:r.quota_score,result:r.finishing_place===1?'win':'loss'};
 }
+async function profileHammerBetting(m,p,kind){
+ const field=kind==='registered'?'player_id':'guest_id';
+ let guestId=p.id;
+ if(kind!=='registered'){
+  const {data:g,error:e}=await db.from('guest_players').select('id').eq('match_id',m.id).eq('directory_entry_id',p.id).maybeSingle();
+  if(e||!g)return null;guestId=g.id;
+ }
+ const {data,error:e}=await db.from('hammer_match_results').select('net_cents,won_holes,lost_holes,tied_holes').eq('match_id',m.id).eq(field,guestId).maybeSingle();
+ if(e||!data)return null;
+ const amount=Number(data.net_cents)/100;
+ return {m,amount,result:amount>0?'win':amount<0?'loss':'tie',hammer:true,wonHoles:data.won_holes,lostHoles:data.lost_holes,tiedHoles:data.tied_holes};
+}
 async function loadPlayerHistory(p,kind){
 const career=el('playerCareerStats'),years=el('playerYearStats'),games=el('playerGameStats'),recent=el('playerRecentMatches');
 career.textContent='Loading match history…';years.textContent='';games.textContent='';recent.textContent='';
@@ -352,6 +364,7 @@ const evaluated=await Promise.all(posted.slice(0,40).map(async m=>{
 try{
 if(m.game_type==='quota'){const quota=await profileQuotaBetting(m,p,kind);return {m,result:quota?.result??null,quota, gross:null,net:null}}
 if(m.game_type==='high_low'){const highLow=await profileHighLowBetting(m,p,kind);return {m,result:highLow?.result??null,highLow,gross:null,net:null}}
+if(m.game_type==='hammer'){const hammer=await profileHammerBetting(m,p,kind);return {m,result:hammer?.result??null,hammer,gross:null,net:null}}
 const [mp,gp,hs,gs,teams]=await Promise.all([
 db.from('match_players').select('player_id,course_handicap').eq('match_id',m.id),
 db.from('guest_players').select('id,directory_entry_id,course_handicap').eq('match_id',m.id),
@@ -408,10 +421,10 @@ const grouped=field=>{const out={};for(const item of scored){const key=field==='
 years.innerHTML=recordTable(grouped('year'),'Year')+'<h3>Record by match length</h3>'+recordTable([9,18].map(n=>[n+' holes',scored.filter(x=>Number(x.m.hole_count)===n)]),'Holes');
 games.innerHTML=recordTable(grouped('game'),'Game');
 
-const betting=(await Promise.all(posted.slice(0,40).map(m=>m.game_type==='quota'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.quota??null):m.game_type==='high_low'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.highLow??null):profileNassauBetting(m,p,kind)))).filter(x=>x!==null);
+const betting=(await Promise.all(posted.slice(0,40).map(m=>m.game_type==='hammer'?profileHammerBetting(m,p,kind):m.game_type==='quota'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.quota??null):m.game_type==='high_low'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.highLow??null):profileNassauBetting(m,p,kind)))).filter(x=>x!==null);
 const won=betting.reduce((a,x)=>a+Math.max(0,x.amount),0),lost=betting.reduce((a,x)=>a+Math.max(0,-x.amount),0);
 const money=n=>(n>0?'+':n<0?'-':'')+'$'+Math.abs(n).toFixed(2);
-career.innerHTML+='<h3>Betting record</h3><div class="profile-stats-grid">'+[['Won',money(won)],['Lost',money(-lost)],['Net',money(won-lost)]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Completed Nassau and High/Low bets (including presses) and Quota prize payouts net of buy-ins. Team Nassau stakes are per person.</p>'+betting.map(x=>'<div class="profile-record-row"><span>'+safe(x.m.match_date)+' · '+safe(displayGameType(x.m.game_type))+'</span><strong>'+money(x.amount)+'</strong></div>').join('');
+career.innerHTML+='<h3>Betting record</h3><div class="profile-stats-grid">'+[['Won',money(won)],['Lost',money(-lost)],['Net',money(won-lost)]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Completed Nassau, Better Ball, Hammer and High-Low bets, including presses where applicable, and Quota payouts net of buy-ins. Team Nassau stakes are per person.</p>'+betting.map(x=>'<div class="profile-record-row"><span>'+safe(x.m.match_date)+' · '+safe(displayGameType(x.m.game_type))+'</span><strong>'+money(x.amount)+'</strong></div>').join('');
 recent.innerHTML=(matches||[]).slice(0,10).map(m=>'<div class="profile-record-row"><span><strong>'+safe(displayGameType(m.game_type))+'</strong><br><small>'+safe(m.match_date)+' · '+safe(m.status)+'</small></span><button class="secondary" type="button" data-profile-match="'+safe(m.id)+'">Scorecard</button></div>').join('');
 recent.querySelectorAll('[data-profile-match]').forEach(b=>b.onclick=()=>openHistoricalScorecard(b.dataset.profileMatch,p,kind));
 }catch(e){career.textContent='Could not load match history: '+(e?.message||String(e))}
@@ -774,7 +787,7 @@ function renderHammerControls(){
  el('bets').innerHTML=hammerHoles.map(h=>'<div>Hole '+h.hole_number+' · $'+(Number(match.stake)*Math.pow(2,h.doubles)).toFixed(2)+(h.declined_by?' · Conceded by '+safe(label(h.declined_by-1)):'')+'</div>').join('')||'Each hole starts at $'+Number(match.stake).toFixed(2)+'.';
  el('presses').textContent='Hammer actions replace Nassau presses.';
  el('financialSummary').textContent='Hammer settlement is not yet enabled. Do not finalize this match until hole-by-hole payouts are implemented.';
- el('finalizeMatch').classList.add('hidden');
+ el('finalizeMatch').classList.toggle('hidden',match.status!=='active'||match.created_by!==user?.id);
 }
 function renderPressScoreColumn(pressRows,result,groups){for(const cell of el('scoreRows').querySelectorAll('[data-press-hole]')){const hole=Number(cell.dataset.pressHole),items=[];for(const p of pressRows){if(hole<p.from||hole>p.end)continue;let lead=0,played=0;for(let n=p.from;n<=hole;n++){const pair=result(n);if(!pair)break;lead+=pair[0]<pair[1]?1:pair[0]>pair[1]?-1:0;played++;if(Math.abs(lead)>p.end-n)break}if(!played)continue;const remaining=p.end-(p.from+played-1);const status=Math.abs(lead)>remaining?Math.abs(lead)+'&'+remaining:lead===0?'AS':Math.abs(lead)+' UP';const leader=lead>0?0:1;const initials=lead===0?'':(groups[leader].length===1?groups[leader][0].name.trim().split(/\s+/).map(x=>x[0]||'').join('').toUpperCase():'T'+(leader+1));items.push('<span class="bet-line">'+p.id+' '+status+(initials?' '+safe(initials):'')+'</span>')}cell.innerHTML=items.join('')||'<span class="muted">—</span>'}}
 function renderNassauPresses(){const roster=orderedRoster();const four=roster.length===4&&teamAssignments.length===4;const two=roster.length===2;if(!four&&!two){el('presses').textContent='Add players and assign teams to enable Nassau presses.';return}const hc=roster.map(p=>matchTee&&p.index!=null&&p.index!==''?courseHcp(p.index):p.handicap);if(hc.some(x=>!Number.isInteger(x))){el('presses').textContent='Enter player handicaps to enable presses.';return}const base=Math.min(...hc),team=p=>teamAssignments.find(t=>p.guest?t.guest_id===p.id:t.player_id===p.id)?.team_number;const groups=four?[roster.filter(p=>team(p)===1),roster.filter(p=>team(p)===2)]:[[roster[0]],[roster[1]]];const sideName=i=>four?teamLastNames(groups[i]):displayName(groups[i][0].name);if(groups.some(g=>g.length!==(four?2:1))){el('presses').textContent='Assign two players per team.';return}const net=(p,h)=>{const input=el('scoreRows').querySelector('input[data-hole="'+h+'"][data-player="'+p.id+'"]');const row=(p.guest?guestScores:scores).find(x=>Number(x.hole_number)===h&&(p.guest?x.guest_id:x.player_id)===p.id);const si=strokeIndices.find(x=>Number(x.hole_number)===h)?.stroke_index;const raw=input&&input.value.trim()!==''?Number(input.value):Number(row?.gross_strokes);if(!Number.isInteger(raw)||raw<1||!Number.isInteger(si))return null;return raw-strokeCount(hc[roster.indexOf(p)]-base,si)};const result=h=>{const vals=groups.map(g=>g.map(p=>net(p,h)));return vals.some(v=>v.some(x=>x===null))?null:vals.map(v=>Math.min(...v))};const defs=match.game_type==='better_ball'?[['O','18-Hole Match',1,18]]:match.hole_count===18?[['F','Front 9',1,9],['B','Back 9',10,18],['O','Overall',1,18]]:[['9','Nine Holes',1,match.hole_count]];const active=nassauPresses.filter(p=>!p.undone_at);const opportunities=[];const lines=[];const linesBySegment={};const pressRows=[];const pressCounts={};const pressIds=new Map(active.map(p=>{const n=(pressCounts[p.segment]||0)+1;pressCounts[p.segment]=n;return [p.id,'P'+n]}));const compute=(seg,label,start,end,parent)=>{const from=parent?parent.start_hole:start;const {lead:diff,last,remaining,closed:finished}=settledNassau(from,end,result);const closed=finished;const desc=last<from?'Not started':diff===0?'AS':safe(sideName(diff>0?0:1))+' '+Math.abs(diff)+(closed&&remaining>0?' & '+remaining:' UP');if(parent){const tag=pressIds.get(parent.id);pressRows.push({id:tag,seg,from,end,parent});(linesBySegment[seg]??=[]).push('<div class="press-item"><strong>Press '+tag.slice(1)+' · Hole '+from+'</strong> · '+desc+(finished?' · FINAL ✓':'')+(last<from&&!posted()?'<button type="button" data-undo-press="'+safe(parent.id)+'">Undo Press</button>':'')+'</div>')}if(!closed&&Math.abs(diff)>=2&&last<end&&last>=from&&!posted()&&!active.some(p=>p.segment===seg&&p.start_hole===last+1&&p.parent_id===(parent?.id||null)))opportunities.push({seg,label,start:last+1,parent:parent?.id||null,description:label+(parent?' re-press':' press')+' · Starts hole '+(last+1)+' · '+safe(sideName(diff>0?1:0))+' is '+Math.abs(diff)+' down'})};for(const [seg,label,start,end] of defs){compute(seg,label,start,end,null);for(const p of active.filter(p=>p.segment===seg))compute(seg,label,start,end,p)}renderPressScoreColumn(pressRows,result,groups);
@@ -824,7 +837,7 @@ const incomplete=all.filter(p=>Array.from({length:holes},(_,i)=>i+1).some(h=>!(p
 if(incomplete.length)throw Error('Cannot post yet: '+incomplete.length+' player(s) have missing saved scores. Check both nines if this is an 18-hole match.');
 if(!confirm('Finalize and post this '+holes+'-hole match? All saved scores will become read-only.'))return;
 button.textContent='Posting match…';
-const {data,error:e}=await db.rpc('finalize_complete_match',{p_match:id});
+const {data,error:e}=await db.rpc(match.game_type==='hammer'?'finalize_hammer_match':'finalize_complete_match',{p_match:id});
 if(e)throw e;
 if(data!=='completed')throw Error('The database did not confirm finalization.');
 match.status='completed';await refresh();await loadMatches();msg('Match posted successfully. Player records will include this result when the player profile is opened.');
