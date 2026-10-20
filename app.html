@@ -50,7 +50,17 @@
 .profile-record-grid>:first-child{min-width:0;overflow-wrap:anywhere}
 .profile-record-head{color:#64748b;font-weight:700;font-size:12px;background:#f2f7fb;border-radius:8px 8px 0 0}
 @media(max-width:420px){.profile-record-grid{gap:4px;font-size:13px;padding:11px 2px}.profile-record-head{font-size:11px}}
-.score-wrap{position:relative}.high-low-score{display:block;text-align:center;font-size:16px;font-weight:600;line-height:1.35;white-space:nowrap;color:#142d50}.scorecard-table td:has(.high-low-score){text-align:center;vertical-align:middle}.high-low-mark{position:absolute;z-index:5;right:4px;bottom:5px;font-size:10px;font-weight:800;line-height:1;color:#245b82;pointer-events:none;background:#fff;border-radius:3px;padding:0 2px}.scorecard-table th .hole-par{display:block;font-size:10px;font-weight:600;color:#50667b;white-space:nowrap;margin-top:3px}</style>
+.score-wrap{position:relative}.high-low-score{display:block;text-align:center;font-size:16px;font-weight:600;line-height:1.35;white-space:nowrap;color:#142d50}.scorecard-table td:has(.high-low-score){text-align:center;vertical-align:middle}.high-low-mark{position:absolute;z-index:5;right:4px;bottom:5px;font-size:10px;font-weight:800;line-height:1;color:#245b82;pointer-events:none;background:#fff;border-radius:3px;padding:0 2px}.scorecard-table th .hole-par{display:block;font-size:10px;font-weight:600;color:#50667b;white-space:nowrap;margin-top:3px}
+/* Integrated four-player team assignments */
+#matchPlayerChecklist.inline-team-mode .match-player-option{grid-template-columns:22px minmax(0,1fr) auto minmax(95px,112px);gap:9px}
+#matchPlayerChecklist .inline-team-slot:empty{display:none}
+#matchPlayerChecklist .inline-team-slot select{width:100%;min-width:0;padding:8px 5px;font-size:14px;border:1px solid #bfd3e3;border-radius:9px;background:#e9f2f8;color:#193e5d}
+#matchPlayerChecklist.inline-team-mode .match-player-option:not(:has(input:checked)){grid-template-columns:22px minmax(0,1fr) auto}
+#setupTeamAssignments{margin-top:12px}
+#setupTeamAssignments h3{font-size:1rem;margin:0 0 5px}
+#setupTeamAssignments p.muted{font-size:.82rem;margin:0 0 6px}
+@media(max-width:480px){#matchPlayerChecklist.inline-team-mode .match-player-option{grid-template-columns:22px minmax(0,1fr) auto;gap:8px}#matchPlayerChecklist.inline-team-mode .match-player-option:has(select) .inline-team-slot{grid-column:2 / 4;justify-self:end;width:110px;margin-top:-2px}#matchPlayerChecklist.inline-team-mode .match-player-index{white-space:nowrap}}
+</style>
 </head><body><header><h1>⛳ Tarheel Degens</h1><div>Carolina Blue • Live scoring test</div></header><main>
 <div id="message" class="status">Loading…</div>
 <section id="auth" class="card hidden"><h2>Sign in</h2><p class="muted">Use your email to get a sign-in link. Open the link on this same device.</p><label>Email</label><input id="email" type="email" placeholder="you@example.com"><button id="login">Email me a sign-in link</button></section>
@@ -76,7 +86,7 @@ function renderMatchPlayerChecklist(){
  const box=el('matchPlayerChecklist');if(!box)return;
  const selected=new Set([...box.querySelectorAll('input[data-match-player]:checked')].map(x=>x.value));
  const all=[{id:'self',name:el('name').value.trim()||user?.email||'Me',index:el('index').value,kind:'self'},...selectableMatchPlayers];
- box.innerHTML=all.map(p=>'<label class="match-player-option"><input type="checkbox" data-match-player value="'+safe(p.id)+'" '+(p.kind==='self'?'checked disabled':selected.has(p.id)?'checked':'')+'><span class="match-player-name">'+safe(p.name)+'</span><span class="match-player-index">'+safe(formatHandicapIndex(p.index))+'</span></label>').join('');
+ box.innerHTML=all.map(p=>'<label class="match-player-option"><input type="checkbox" data-match-player value="'+safe(p.id)+'" '+(p.kind==='self'?'checked disabled':selected.has(p.id)?'checked':'')+'><span class="match-player-name">'+safe(p.name)+'</span><span class="match-player-index">'+safe(formatHandicapIndex(p.index))+'</span><span class="inline-team-slot" data-inline-team="'+safe(p.id)+'"></span></label>').join('');
  box.querySelectorAll('input[data-match-player]').forEach(c=>c.onchange=updateMatchPlayerSelection);
  updateMatchPlayerSelection();
 }
@@ -84,15 +94,27 @@ function setupTeamsRequired(){return el('gameType').value==='better_ball'||el('g
 function updateSetupTeams(){
  const ids=[...el('matchPlayerChecklist').querySelectorAll('input[data-match-player]:checked')].map(x=>x.value);
  const enabled=setupTeamsRequired()&&(Number(el('playerCount').value)===4||ids.length===4),section=el('setupTeamAssignments');
- section.classList.toggle('hidden',!enabled);if(!enabled)return;
- if(ids.length!==4){el('setupTeamRows').innerHTML='<p class="muted">Select '+(4-ids.length)+' more player'+(4-ids.length===1?'':'s')+' above to assign teams. Each player’s handicap index will be shown here.</p>';el('setupTeamStatus').textContent=ids.length+'/4 players selected';return;}
- const rows=el('setupTeamRows'),previous=new Map([...rows.querySelectorAll('select[data-setup-team]')].map(x=>[x.dataset.setupTeam,x.value]));
- rows.innerHTML=ids.map((id,i)=>{const entry=[{id:'self',name:el('name').value.trim()||'Me',index:el('index').value},...selectableMatchPlayers].find(p=>p.id===id);
- const name=entry?.name||'Player',idx=formatHandicapIndex(entry?.index),choice=previous.get(id)||(i<2?'1':'2');
- return '<div class="team-row" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>'+safe(name)+' <small class="match-player-index">('+safe(idx)+')</small></span><select data-setup-team="'+safe(id)+'" style="max-width:125px"><option value="1" '+(choice==='1'?'selected':'')+'>Team 1</option><option value="2" '+(choice==='2'?'selected':'')+'>Team 2</option></select></div>'}).join('');
- rows.querySelectorAll('select').forEach(x=>x.onchange=validateSetupTeams);validateSetupTeams();
+ const previous=new Map([...document.querySelectorAll('select[data-setup-team]')].map(x=>[x.dataset.setupTeam,x.value]));
+ section.classList.toggle('hidden',!enabled);
+ el('setupTeamRows').innerHTML='';
+ el('matchPlayerChecklist').classList.toggle('inline-team-mode',enabled);
+ el('matchPlayerChecklist').querySelectorAll('[data-inline-team]').forEach(slot=>{
+  const id=slot.dataset.inlineTeam,checked=ids.includes(id);
+  if(!enabled||!checked){slot.innerHTML='';return;}
+  const choice=previous.get(id)||(ids.indexOf(id)<2?'1':'2');
+  slot.innerHTML='<select aria-label="Team for '+safe(id)+'" data-setup-team="'+safe(id)+'"><option value="1" '+(choice==='1'?'selected':'')+'>Team 1</option><option value="2" '+(choice==='2'?'selected':'')+'>Team 2</option></select>';
+ });
+ el('setupTeamAssignments').querySelector('h3').textContent='Team assignments';
+ el('setupTeamAssignments').querySelector('p.muted').textContent='Assign two players to each team using the selectors beside their names.';
+ document.querySelectorAll('select[data-setup-team]').forEach(x=>{x.onclick=e=>e.stopPropagation();x.onchange=e=>{e.stopPropagation();validateSetupTeams();}});
+ validateSetupTeams();
 }
-function validateSetupTeams(){const choices=[...el('setupTeamRows').querySelectorAll('select')].map(x=>x.value);const a=choices.filter(x=>x==='1').length,b=choices.filter(x=>x==='2').length;el('setupTeamStatus').textContent='Team 1: '+a+'/2 · Team 2: '+b+'/2'+(a===2&&b===2?' ✓':' — assign two players to each team');}
+function validateSetupTeams(){
+ const choices=[...document.querySelectorAll('select[data-setup-team]')].map(x=>x.value);
+ const a=choices.filter(x=>x==='1').length,b=choices.filter(x=>x==='2').length;
+ const selected=el('matchPlayerChecklist').querySelectorAll('input[data-match-player]:checked').length;
+ el('setupTeamStatus').textContent=selected<4?selected+'/4 players selected · choose '+(4-selected)+' more':('Team 1: '+a+'/2 · Team 2: '+b+'/2'+(a===2&&b===2?' ✓':' — assign two players to each team'));
+}
 function updateMatchPlayerSelection(){
  const n=el('matchPlayerChecklist').querySelectorAll('input[data-match-player]:checked').length;
  el('matchPlayerSelectionStatus').textContent=n+' player'+(n===1?'':'s')+' selected · choose 2–'+(el('gameType').value==='quota'?12:4);
@@ -326,7 +348,7 @@ el('gameType').addEventListener('change',()=>{updateQuotaSetup();updateMatchPlay
 el('create').onclick=async()=>{try{
  const ids=[...el('matchPlayerChecklist').querySelectorAll('input[data-match-player]:checked')].map(x=>x.value);
  if(el('gameType').value==='better_ball'&&![2,4].includes(ids.length))throw Error('Better Ball requires exactly 2 or 4 players.');if(el('gameType').value==='high_low'&&ids.length!==4)throw Error('High/Low requires exactly four players.'); if(ids.length<2||ids.length>(el('gameType').value==='quota'?12:4))throw Error('Select 2 to 12 players for Quota or 2 to 4 for Nassau.');
- const setupTeams=ids.length===4&&setupTeamsRequired()?[...el('setupTeamRows').querySelectorAll('select[data-setup-team]')].map(x=>({key:x.dataset.setupTeam,team:Number(x.value)})):[];if(setupTeams.length===4&&setupTeams.filter(x=>x.team===1).length!==2)throw Error('Assign exactly two players to each team.');
+ const setupTeams=ids.length===4&&setupTeamsRequired()?[...document.querySelectorAll('select[data-setup-team]')].map(x=>({key:x.dataset.setupTeam,team:Number(x.value)})):[];if(setupTeams.length===4&&setupTeams.filter(x=>x.team===1).length!==2)throw Error('Assign exactly two players to each team.');
  const quotaMode=el('gameType').value==='quota',quotaShares=quotaMode?[...el('quotaPayoutInputs').querySelectorAll('input')].slice(0,ids.length).map(x=>Number(x.value)):[];if(quotaMode&&(quotaShares.length!==Number(el('quotaPaidPlaces').value)||quotaShares.some(x=>!Number.isFinite(x)||x<0||x>100)||Math.abs(quotaShares.reduce((a,b)=>a+b,0)-100)>.001))throw Error('Quota payout percentages must total 100%.');
  const {data:p,error:pe}=await db.from('players').select('id').eq('id',user.id).maybeSingle();if(pe)throw pe;if(!p)throw Error('Save your profile first.');
  const {data,error:e}=await db.from('matches').insert({created_by:user.id,game_type:el('gameType').value,match_date:el('date').value,stake:Number(el('stake').value),hole_count:el('gameType').value==='better_ball'?18:Number(el('count').value),course_id:el('courseSelect').value||null,tee_id:el('teeSelect').value||null}).select().single();if(e)throw e;
