@@ -733,7 +733,7 @@ function renderHammerHoleResults(roster,sides,label){
   const h=Number(cell.dataset.pressHole),count=hammerHoles.find(x=>Number(x.hole_number)===h)?.doubles||0;
   cell.textContent=count?'🔨'.repeat(count):'—';
  }
- const initials=p=>String(p.name||'').trim().split(/\\s+/).filter(Boolean).map(part=>part[0].toUpperCase()).join('');
+ const initials=p=>String(p.name||'').trim().split(/\s+/).filter(Boolean).map(part=>part[0].toUpperCase()).join('');
  const shortSide=i=>sides[i].length===1?initials(sides[i][0]):'T'+(i+1);
  const netFor=(from,to)=>{
   let net=0,decided=0;
