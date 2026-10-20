@@ -73,6 +73,48 @@
 #setupRosterHead{grid-template-columns:minmax(0,1fr) 30px 89px;gap:5px;align-items:center;padding:5px 7px 7px 34px;font-size:12px;font-weight:700;color:#52677d}
 #setupRosterHead span:nth-child(2){text-align:center}#setupRosterHead span:nth-child(3){text-align:center}
 @media(min-width:481px){#setupRosterHead{grid-template-columns:minmax(0,1fr) 40px 102px;padding-left:43px;gap:7px}}
+
+/* Definitive mobile roster grid: checkbox | player | CH | team */
+#matchPlayerChecklist.inline-team-mode .match-player-option,
+#matchPlayerChecklist.inline-team-mode .match-player-option:not(:has(input:checked)){
+ display:grid!important;
+ grid-template-columns:22px minmax(0,1fr) 34px 100px!important;
+ grid-template-rows:auto!important;
+ column-gap:7px!important;
+ align-items:center!important;
+ padding:10px 9px!important;
+ min-height:58px!important;
+}
+#matchPlayerChecklist.inline-team-mode .match-player-option > input[data-match-player]{
+ grid-column:1!important;grid-row:1!important;justify-self:center!important;
+}
+#matchPlayerChecklist.inline-team-mode .match-player-option > .match-player-name{
+ grid-column:2!important;grid-row:1!important;min-width:0!important;
+ font-size:clamp(12px,3.2vw,16px)!important;line-height:1.2!important;
+ overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+}
+#matchPlayerChecklist.inline-team-mode .match-player-option > .match-player-index{
+ grid-column:3!important;grid-row:1!important;justify-self:center!important;
+ text-align:center!important;margin:0!important;white-space:nowrap!important;
+}
+#matchPlayerChecklist.inline-team-mode .match-player-option > .inline-team-slot,
+#matchPlayerChecklist.inline-team-mode .match-player-option > .inline-team-slot:empty{
+ grid-column:4!important;grid-row:1!important;width:100%!important;
+ margin:0!important;justify-self:stretch!important;display:block!important;
+}
+#matchPlayerChecklist.inline-team-mode .inline-team-slot select{
+ width:100%!important;min-width:0!important;height:38px!important;
+ font-size:13px!important;padding:5px 3px!important;
+}
+#setupRosterHead{grid-template-columns:minmax(0,1fr) 34px 100px!important;padding-left:38px!important;gap:7px!important}
+@media(max-width:480px){
+ #matchPlayerChecklist.inline-team-mode .match-player-option,
+ #matchPlayerChecklist.inline-team-mode .match-player-option:not(:has(input:checked)){
+ grid-template-columns:20px minmax(0,1fr) 30px 88px!important;column-gap:5px!important;padding:9px 7px!important;
+ }
+ #matchPlayerChecklist.inline-team-mode .inline-team-slot select{font-size:12px!important}
+ #setupRosterHead{grid-template-columns:minmax(0,1fr) 30px 88px!important;padding-left:32px!important;gap:5px!important}
+}
 </style>
 </head><body><header><h1>⛳ Tarheel Degens</h1><div>Carolina Blue • Live scoring test</div></header><main>
 <div id="message" class="status">Loading…</div>
