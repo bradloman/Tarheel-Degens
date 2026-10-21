@@ -541,7 +541,7 @@ const {data,error:e}=await (directory?q.eq('directory_entry_id',p.id):q.eq('owne
 if(e){el('paymentLinks').textContent='Payment details unavailable.';return;}
 const rows=data||[];const values=Object.fromEntries(rows.map(x=>[x.provider,x.payment_value]));
 const labels={venmo:'Venmo',zelle:'Zelle',paypal:'PayPal',apple_cash:'Apple Cash'};
-const href=(provider,v)=>{const name=v.trim().replace(/^@/,'');if(!/^[a-zA-Z0-9._-]{1,40}$/.test(name))return null;return provider==='venmo'?'https://venmo.com/'+encodeURIComponent(name):provider==='paypal'?'https://paypal.me/'+encodeURIComponent(name):null;};
+const href=(provider,v)=>{let name=String(v||'').trim();if(provider==='venmo')name=name.replace(/^https?:\/\/(?:www\.)?venmo\.com\/(?:u\/)?/i,'').replace(/^@/,'').replace(/\/$/,'').split('?')[0];else if(provider==='paypal')name=name.replace(/^https?:\/\/(?:www\.)?paypal\.me\//i,'').replace(/^@/,'').replace(/\/$/,'').split('?')[0];if(!/^[a-zA-Z0-9._-]{1,40}$/.test(name))return null;return provider==='venmo'?'https://venmo.com/u/'+encodeURIComponent(name):provider==='paypal'?'https://paypal.me/'+encodeURIComponent(name):null;};
 el('paymentLinks').innerHTML=rows.length?rows.map(x=>{const url=href(x.provider,x.payment_value);return '<p><strong>'+labels[x.provider]+':</strong> '+(url?'<a target="_blank" rel="noopener noreferrer" href="'+safe(url)+'">'+safe(x.payment_value)+'</a>':safe(x.payment_value))+'</p>';}).join(''):'<p class="muted">No payment methods listed.</p>';
 if(!owned)return;
 for(const [id,k] of [['payVenmo','venmo'],['payZelle','zelle'],['payPaypal','paypal'],['payApple','apple_cash']])el(id).value=values[k]||'';
