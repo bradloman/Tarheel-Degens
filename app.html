@@ -233,6 +233,27 @@ header::before{display:none!important}
   padding:12px 5px!important;
  }
 }
+
+/* Full argyle masthead, replacing the narrow argyle border. */
+header{
+ border:1px solid #c6dce9!important;
+ background:#83b8d9 url('assets/carolina-argyle.svg') center center / 144px 144px repeat!important;
+ box-shadow:0 6px 22px rgba(15,49,84,.12)!important;
+}
+header::before{display:none!important}
+header .brand-mark{
+ background:rgba(255,255,255,.95)!important;
+ border-color:#173e68!important;
+}
+header .brand-copy{
+ background:rgba(255,255,255,.94);
+ padding:9px 16px;
+ border-radius:12px;
+ box-shadow:0 2px 10px rgba(15,49,84,.07);
+}
+@media(max-width:700px){
+ header .brand-copy{padding:7px 10px}
+}
 </style>
 </head><body><header><div class="brand-mark" aria-hidden="true">⛳</div><div class="brand-copy"><h1>Tarheel Degens</h1></div></header><main>
 <div id="message" class="status">Loading…</div>
