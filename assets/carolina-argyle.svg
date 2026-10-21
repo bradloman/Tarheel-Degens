@@ -5,7 +5,7 @@
 <path d="M0 60L30 120 0 180 -30 120Z M60 60L90 120 60 180 30 120Z M120 60L150 120 120 180 90 120Z"/>
 <path d="M0 180L30 240 0 300 -30 240Z M60 180L90 240 60 300 30 240Z M120 180L150 240 120 300 90 240Z"/>
 </g>
-<g fill="none" stroke="#15395e" stroke-width="1.4" stroke-dasharray="9 10" stroke-linecap="round" opacity=".72">
+<g fill="none" stroke="#15395e" stroke-width="1.05" stroke-dasharray="6 8" stroke-linecap="round" opacity=".58">
 <path d="M-60 0L60 240 M0 0L120 240 M60 0L180 240 M120 0L240 240"/>
 <path d="M-60 240L60 0 M0 240L120 0 M60 240L180 0 M120 240L240 0"/>
 </g></svg>
