@@ -201,8 +201,16 @@ input,select,textarea{border-color:#cbdce9}
  #app>.match-tabs button{min-width:0;font-size:clamp(11px,2.8vw,14px);padding:11px 4px;min-height:44px}
  .card{margin:10px 0!important;padding:12px!important}
 }
+
+/* Refined clubhouse theme: quiet backdrop, simplified branding. */
+body{background:#f2f7fb!important;background-image:none!important}
+header{background:#fff!important}
+header .brand-copy>div{display:none!important}
+main{background:transparent!important}
+.welcome-panel{background:#fff!important}
+@media(max-width:700px){header h1{font-size:clamp(22px,5.8vw,34px)!important;letter-spacing:0!important}}
 </style>
-</head><body><header><div class="brand-mark" aria-hidden="true">⛳</div><div class="brand-copy"><h1>TARHEEL DEGENS</h1><div>GOLF · MATCHES · BRAGGING RIGHTS</div></div></header><main>
+</head><body><header><div class="brand-mark" aria-hidden="true">⛳</div><div class="brand-copy"><h1>Tarheel Degens</h1></div></header><main>
 <div id="message" class="status">Loading…</div>
 <section id="auth" class="card hidden"><h2>Sign in</h2><p class="muted">Use your email to get a sign-in link. Open the link on this same device.</p><label>Email</label><input id="email" type="email" placeholder="you@example.com"><button id="login">Email me a sign-in link</button></section>
 <section id="app" class="hidden"><div class="welcome-panel"><div class="welcome-copy"><h2>Welcome to Tarheel Degens</h2><p>Track golf matches, bets, and results with your crew.</p></div><div class="welcome-icon" aria-hidden="true">⛳</div></div><nav class="match-tabs" aria-label="Match screens"><button id="setupTab" type="button" aria-selected="true">Match Setup</button><button id="playersTab" type="button" aria-selected="false">Players</button><button id="scoreTab" type="button" aria-selected="false">Live Scorecard</button></nav><div id="setupPage">
