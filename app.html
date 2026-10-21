@@ -155,25 +155,12 @@
 #scoreTotals .hammer-net-total .hammer-net-amount{text-align:center;font-size:clamp(14px,2.9vw,18px);font-weight:800;white-space:nowrap}
 #scoreTotals .hammer-net-total th{font-size:13px}
 
-/* Subtle Carolina-blue argyle inspired by the Tarheel Degens pattern. */
-body{
- background-color:#f2f8fc;
- background-image:
-  repeating-linear-gradient(60deg,transparent 0 45px,rgba(22,53,87,.055) 45px 47px,transparent 47px 92px),
-  repeating-linear-gradient(-60deg,transparent 0 45px,rgba(22,53,87,.055) 45px 47px,transparent 47px 92px),
-  linear-gradient(120deg,rgba(86,160,210,.065) 25%,transparent 25% 75%,rgba(86,160,210,.065) 75%);
- background-size:190px 190px,190px 190px,120px 120px;
-}
-header{position:relative;overflow:hidden;isolation:isolate}
-header::before{
- content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.24;
- background-image:
-  repeating-linear-gradient(60deg,transparent 0 32px,#183a60 32px 34px,transparent 34px 66px),
-  repeating-linear-gradient(-60deg,transparent 0 32px,#183a60 32px 34px,transparent 34px 66px),
-  linear-gradient(60deg,transparent 36%,rgba(255,255,255,.8) 36% 64%,transparent 64%);
- background-size:140px 140px,140px 140px,110px 110px;
-}
-.card{box-shadow:0 3px 14px rgba(23,62,93,.045)}
+/* Classic Carolina Blue argyle: alternating blue and white diamonds, navy dashed cross-stitch. */
+body{background:#f2f8fc url('assets/carolina-argyle.svg') repeat;background-size:144px 144px}
+header{position:relative;overflow:hidden;isolation:isolate;background:#56a0d2}
+header::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:url('assets/carolina-argyle.svg') repeat;background-size:144px 144px;opacity:.38}
+main{background:rgba(242,248,252,.90);border-radius:0 0 16px 16px;min-height:85vh}
+.card{background:#fff;box-shadow:0 3px 14px rgba(23,62,93,.06)}
 </style>
 </head><body><header><h1>⛳ Tarheel Degens</h1><div>Carolina Blue • Live scoring test</div></header><main>
 <div id="message" class="status">Loading…</div>
