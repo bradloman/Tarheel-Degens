@@ -486,6 +486,7 @@ function renderMatchPlayerChecklist(){
 }
 function setupTeamsRequired(){return ['better_ball','nassau','hammer'].includes(el('gameType').value)}
 function updateSetupTeams(){
+ if(el('gameType').value==='tilt'){el('setupTeamAssignments').classList.add('hidden');return;}
  const ids=[...el('matchPlayerChecklist').querySelectorAll('input[data-match-player]:checked')].map(x=>x.value);
  const enabled=setupTeamsRequired()&&(Number(el('playerCount').value)===4||ids.length===4),section=el('setupTeamAssignments');
  const previous=new Map([...document.querySelectorAll('select[data-setup-team]')].map(x=>[x.dataset.setupTeam,x.value]));
@@ -752,22 +753,33 @@ function quotaPaidChoices(n){return n<=6?[1,2]:n<=8?[2,3]:[3,4]}
 function updateQuotaSetup(){const quota=['quota','tilt'].includes(el('gameType').value),picker=el('playerCount'),selected=el('matchPlayerChecklist').querySelectorAll('input[data-match-player]:checked').length,previous=Number(picker.value)||2;const n=el('gameType').value==='high_low'?4:['better_ball','hammer'].includes(el('gameType').value)?(previous===4?4:2):Math.max(2,Math.min(quota?12:4,previous));picker.innerHTML=(['better_ball','hammer'].includes(el('gameType').value)?[2,4]:Array.from({length:quota?11:3},(_,i)=>i+2)).map(v=>'<option value="'+v+'">'+v+' players</option>').join('');picker.value=String(n);picker.disabled=el('gameType').value==='high_low';if(el('gameType').value==='better_ball'){el('count').value='18';el('count').disabled=true;}else el('count').disabled=false;el('quotaPayoutSetup').classList.toggle('hidden',!quota);if(el('gameType').value==='tilt'){renderTiltSetup();return;}if(!quota)return;const choices=quotaPaidChoices(n),priorPlaces=Number(el('quotaPaidPlaces')?.value),paid=choices.includes(priorPlaces)?priorPlaces:choices[0],priorShares=[...(el('quotaPayoutInputs')?.querySelectorAll('input')||[])].map(x=>x.value);el('quotaPayoutSetup').innerHTML='<h3>Quota prize payouts</h3><label>Paid places</label><select id="quotaPaidPlaces">'+choices.map(x=>'<option value="'+x+'" '+(x===paid?'selected':'')+'>'+x+' place'+(x===1?'':'s')+'</option>').join('')+'</select><div id="quotaPayoutInputs"></div><p id="quotaPotPreview"></p>';el('quotaPaidPlaces').onchange=updateQuotaShareInputs;updateQuotaShareInputs(priorShares)}
 function renderTiltSetup(){
  const box=el('quotaPayoutSetup');box.classList.remove('hidden');
- const previous={competition:el('tiltCompetition')?.value||'individual',teamSize:el('tiltTeamSize')?.value||'2',betting:el('tiltBetting')?.value||'pot',assignments:new Map([...box.querySelectorAll('[data-tilt-team]')].map(x=>[x.dataset.tiltTeam,x.value])),groups:new Map([...box.querySelectorAll('[data-tilt-group]')].map(x=>[x.dataset.tiltGroup,x.value]))};
+ const previous={competition:el('tiltCompetition')?.value||'individual',teamSize:el('tiltTeamSize')?.value||'2',betting:el('tiltBetting')?.value||'pot',assignments:new Map([...document.querySelectorAll('[data-tilt-team]')].map(x=>[x.dataset.tiltTeam,x.value])),groups:new Map([...document.querySelectorAll('[data-tilt-group]')].map(x=>[x.dataset.tiltGroup,x.value]))};
  const roster=[...el('matchPlayerChecklist').querySelectorAll('input[data-match-player]:checked')].map(x=>({id:x.value,name:x.closest('label')?.querySelector('.match-player-name')?.textContent||x.value}));
  const n=roster.length,groups=Math.max(1,Math.ceil(n/4));
  box.innerHTML='<h3>Tilt · match setup</h3><p class="muted">Set up foursomes, competition and wagering. Match creation stays disabled until the scoring and settlement engine is ready.</p><div class="row"><div><label>Competition</label><select id="tiltCompetition"><option value="individual">Individual</option><option value="team">Teams</option></select></div><div><label>Betting method</label><select id="tiltBetting"><option value="pot">Winner takes the pot</option><option value="points">Dollar per point</option></select></div></div><div id="tiltTeamSizeWrap"><label>Players per team</label><select id="tiltTeamSize"><option value="2">2 players</option><option value="3">3 players</option><option value="4">4 players</option></select></div><p id="tiltSetupStatus" class="muted"></p><div id="tiltRosterRows"></div>';
  el('tiltCompetition').value=previous.competition;el('tiltBetting').value=previous.betting;el('tiltTeamSize').value=previous.teamSize;
  const size=Number(previous.teamSize),teamCount=n/size;
  el('tiltTeamSizeWrap').classList.toggle('hidden',previous.competition!=='team');
- el('tiltRosterRows').innerHTML=roster.map((p,i)=>'<div class="row" style="align-items:center;margin:7px 0"><div style="flex:2"><strong>'+safe(p.name)+'</strong></div><div><label>Foursome</label><select data-tilt-group="'+safe(p.id)+'">'+Array.from({length:groups},(_,g)=>'<option value="'+(g+1)+'">Group '+(g+1)+'</option>').join('')+'</select></div>'+(previous.competition==='team'?'<div><label>Team</label><select data-tilt-team="'+safe(p.id)+'">'+Array.from({length:Math.ceil(teamCount)},(_,t)=>'<option value="'+(t+1)+'">Team '+(t+1)+'</option>').join('')+'</select></div>':'')+'</div>').join('');
- roster.forEach((p,i)=>{const g=box.querySelectorAll('[data-tilt-group]')[i];g.value=previous.groups.get(p.id)||String(Math.floor(i/4)+1);const t=box.querySelectorAll('[data-tilt-team]')[i];if(t)t.value=previous.assignments.get(p.id)||String(Math.floor(i/size)+1)});
+ el('tiltRosterRows').innerHTML='';
+ const checklist=el('matchPlayerChecklist');
+ checklist.classList.toggle('inline-team-mode',previous.competition==='team');
+ el('setupRosterHead').classList.toggle('has-teams',previous.competition==='team');
+ el('setupRosterHead').querySelector('span:last-child').style.display=previous.competition==='team'?'':'none';
+ checklist.querySelectorAll('[data-inline-team]').forEach(slot=>{
+  const id=slot.dataset.inlineTeam,i=roster.findIndex(p=>p.id===id);
+  if(i<0){slot.innerHTML='';return;}
+  const team=previous.assignments.get(id)||String(Math.floor(i/size)+1);
+  const group=previous.groups.get(id)||String(Math.floor(i/4)+1);
+  slot.innerHTML='<span style="display:inline-flex;gap:5px;flex-wrap:wrap;justify-content:flex-end"><select aria-label="Foursome for '+safe(id)+'" data-tilt-group="'+safe(id)+'">'+Array.from({length:groups},(_,g)=>'<option value="'+(g+1)+'" '+(group===String(g+1)?'selected':'')+'>Group '+(g+1)+'</option>').join('')+'</select>'+(previous.competition==='team'?'<select aria-label="Team for '+safe(id)+'" data-tilt-team="'+safe(id)+'">'+Array.from({length:Math.ceil(teamCount)},(_,t)=>'<option value="'+(t+1)+'" '+(team===String(t+1)?'selected':'')+'>Team '+(t+1)+'</option>').join('')+'</select>':'')+'</span>';
+ });
+ checklist.querySelectorAll('[data-tilt-group],[data-tilt-team]').forEach(x=>x.onclick=e=>e.stopPropagation());
  function validate(){
-  const g=[...box.querySelectorAll('[data-tilt-group]')].map(x=>x.value),counts=Array.from({length:groups},(_,i)=>g.filter(v=>v===String(i+1)).length);
-  const teams=[...box.querySelectorAll('[data-tilt-team]')].map(x=>x.value),teamCounts=Array.from({length:Math.ceil(teamCount)},(_,i)=>teams.filter(v=>v===String(i+1)).length);
+  const g=[...document.querySelectorAll('[data-tilt-group]')].map(x=>x.value),counts=Array.from({length:groups},(_,i)=>g.filter(v=>v===String(i+1)).length);
+  const teams=[...document.querySelectorAll('[data-tilt-team]')].map(x=>x.value),teamCounts=Array.from({length:Math.ceil(teamCount)},(_,i)=>teams.filter(v=>v===String(i+1)).length);
   const valid=n>=2&&n<=12&&counts.every(c=>c>=1&&c<=4)&&(previous.competition!=='team'||(n%size===0&&teamCounts.every(c=>c===size)));
   el('tiltSetupStatus').textContent=n+' selected · '+groups+' foursome'+(groups===1?'':'s')+(previous.competition==='team'?' · '+size+' per team':'')+' · '+(valid?'Assignments valid ✓':'Adjust groups/teams: max 4 per foursome; every team must have '+size+' players');
  }
- el('tiltCompetition').onchange=()=>{const mode=el('tiltCompetition').value;el('tiltTeamSizeWrap').classList.toggle('hidden',mode!=='team');renderTiltSetup();};el('tiltTeamSize').onchange=renderTiltSetup;box.querySelectorAll('[data-tilt-group],[data-tilt-team]').forEach(x=>x.onchange=validate);validate();
+ el('tiltCompetition').onchange=()=>{const mode=el('tiltCompetition').value;el('tiltTeamSizeWrap').classList.toggle('hidden',mode!=='team');renderTiltSetup();};el('tiltTeamSize').onchange=renderTiltSetup;document.querySelectorAll('[data-tilt-group],[data-tilt-team]').forEach(x=>x.onchange=validate);validate();
 }
 function updateQuotaShareInputs(previous=[]){const count=Number(el('quotaPaidPlaces').value);el('quotaPayoutInputs').innerHTML=Array.from({length:count},(_,i)=>'<label>Place '+(i+1)+' (%)</label><input type="number" min="0" max="100" step=".01" value="'+(previous.length===count?previous[i]:(i===0?100:0))+'">').join('');el('quotaPotPreview').textContent='Prize pool: $'+(Number(el('playerCount').value)*Number(el('stake').value||0)).toFixed(2)}
 el('gameType').addEventListener('change',()=>{updateQuotaSetup();updateMatchPlayerSelection()});el('playerCount').addEventListener('change',()=>{updateQuotaSetup();updateSetupTeams()});el('stake').addEventListener('input',()=>{if(el('gameType').value==='quota')el('quotaPotPreview').textContent='Prize pool: $'+(Number(el('playerCount').value)*Number(el('stake').value||0)).toFixed(2)});updateQuotaSetup();
