@@ -5,7 +5,7 @@
 <path d="M0 36L36 72 0 108 -36 72Z M72 36L108 72 72 108 36 72Z M144 36L180 72 144 108 108 72Z"/>
 <path d="M0 108L36 144 0 180 -36 144Z M72 108L108 144 72 180 36 144Z M144 108L180 144 144 180 108 144Z"/>
 </g>
-<g stroke="#173452" stroke-width="1.7" stroke-dasharray="9 8" fill="none" opacity=".9">
+<g stroke="#173452" stroke-width="1.15" stroke-dasharray="8 10" fill="none" opacity=".74">
 <path d="M-72 0L72 144 M0 0L144 144 M72 0L216 144 M144 0L288 144"/>
 <path d="M-72 144L72 0 M0 144L144 0 M72 144L216 0 M144 144L288 0"/>
 </g>
