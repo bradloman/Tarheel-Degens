@@ -284,8 +284,36 @@ header .brand-mark{width:65px!important;height:65px!important;font-size:33px!imp
  header h1{font-size:clamp(28px,7.2vw,43px)!important}
  header .brand-mark{width:52px!important;height:52px!important;font-size:26px!important}
 }
+
+/* Final refined masthead: narrow vertical argyle, navy wordmark, golf flag insignia. */
+header{
+ min-height:110px!important;
+ padding:16px 22px!important;
+ gap:17px!important;
+ background-size:64px 218px!important;
+ border:1px solid #c5dce9!important;
+}
+header h1{
+ color:#10345c!important;
+ text-shadow:0 1px 2px rgba(255,255,255,.52)!important;
+ font-size:clamp(36px,5.2vw,58px)!important;
+ font-weight:800!important;
+ letter-spacing:0!important;
+}
+header .brand-mark{
+ width:67px!important;height:67px!important;flex-shrink:0!important;
+ background:#fff!important;border:2px solid #143a66!important;
+ box-shadow:0 2px 8px rgba(16,52,92,.13)!important;
+}
+header .brand-mark svg{width:44px;height:44px}
+@media(max-width:700px){
+ header{min-height:94px!important;padding:13px 13px!important;gap:11px!important;background-size:58px 200px!important}
+ header h1{font-size:clamp(29px,7.1vw,43px)!important}
+ header .brand-mark{width:55px!important;height:55px!important}
+ header .brand-mark svg{width:37px;height:37px}
+}
 </style>
-</head><body><header><div class="brand-mark" aria-hidden="true">⛳</div><div class="brand-copy"><h1>Tarheel Degens</h1></div></header><main>
+</head><body><header><div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64" width="44" height="44" focusable="false"><path d="M32 10v38" stroke="#143a66" stroke-width="3.5" stroke-linecap="round"/><path d="M34 11L51 16L34 22Z" fill="#143a66"/><ellipse cx="32" cy="51" rx="23" ry="6" fill="#a8d5b2"/><path d="M13 51Q32 42 51 51" stroke="#143a66" stroke-width="1.8" fill="none"/><ellipse cx="32" cy="48" rx="5" ry="2" fill="#143a66"/></svg></div><div class="brand-copy"><h1>Tarheel Degens</h1></div></header><main>
 <div id="message" class="status">Loading…</div>
 <section id="auth" class="card hidden"><h2>Sign in</h2><p class="muted">Use your email to get a sign-in link. Open the link on this same device.</p><label>Email</label><input id="email" type="email" placeholder="you@example.com"><button id="login">Email me a sign-in link</button></section>
 <section id="app" class="hidden"><nav class="match-tabs" aria-label="Match screens"><button id="setupTab" type="button" aria-selected="true">Match Setup</button><button id="playersTab" type="button" aria-selected="false">Players</button><button id="scoreTab" type="button" aria-selected="false">Live Scorecard</button></nav><div id="setupPage">
