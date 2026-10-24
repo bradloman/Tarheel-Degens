@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tarheel Degens · Tilt Prototype</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color:#163454;background:#c4e5f8}*{box-sizing:border-box}body{margin:0}header{text-align:center;background:#17365d;color:#fff;padding:25px 12px;border-bottom:6px solid #56a0d2}h1{margin:0;font-size:1.7rem}header small{color:#b8dff7}main{max-width:1050px;margin:auto;padding:12px}.card{background:#fff;border:1px solid #a9d0e9;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #17466c16}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}label{display:block;font-weight:700;font-size:.86rem;margin:8px 0}select,input,button{font:inherit;border:1px solid #abc9df;border-radius:8px;padding:9px;max-width:100%}select,input{width:100%;background:white}button{background:#17365d;color:white;font-weight:700;cursor:pointer}button.active{background:#56a0d2;color:#102f4c}.muted{color:#657b8b;font-size:.86rem}.groups{display:flex;gap:8px;flex-wrap:wrap}.groups button{flex:1}table{border-collapse:collapse;width:100%;font-size:.87rem}td,th{border-bottom:1px solid #e1eaf2;padding:7px 4px;text-align:center}th:first-child,td:first-child{text-align:left}td input{width:63px;text-align:center;padding:7px 2px}.scroll{overflow:auto}.points{color:#126a9b;font-weight:800}.warn{color:#9b3d16}.score-row{display:grid;grid-template-columns:75px repeat(9,minmax(48px,1fr));min-width:580px}.score-row>*{padding:5px;text-align:center;border-bottom:1px solid #e5edf3}.score-row input{width:100%;min-width:0}.score-row .name{text-align:left;font-size:.75rem;overflow-wrap:anywhere}.chip{background:#e8f4fc;padding:3px 7px;border-radius:20px;white-space:nowrap}.hidden{display:none}
+</style></head><body><header><h1>Tarheel Degens · Tilt</h1><small>Development prototype · Local demo scores only · Not a saved match</small></header>
+<main><section class="card"><h2>Match setup</h2><div class="grid"><label>Players<select id="playerCount"></select></label><label>Competition<select id="format"><option value="individual">Individual</option><option value="team">Teams</option></select></label><label>Team size<select id="teamSize"><option value="2">2 golfers</option><option value="3">3 golfers</option><option value="4">4 golfers</option></select></label><label>Betting format<select id="betting"><option value="pot">Winner takes the pot</option><option value="points">Dollar per point</option></select></label><label>Stake ($)<input id="stake" type="number" value="5" min="0" step=".01"></label><label>Holes<select id="holes"><option value="18">18</option><option value="9">9</option></select></label></div><p class="muted">Demo uses par 4 and zero handicap strokes for each hole. Course, tees, handicap allocation and database persistence will be connected in the next phase.</p><button id="configure">Build demo match</button><p id="status" class="warn" role="status"></p></section>
+<section class="card hidden" id="assign"><h2>Foursomes and teams</h2><div id="assignment" class="grid"></div><button id="apply">Apply assignments</button></section>
+<section class="card hidden" id="play"><h2>Live leaderboard</h2><div id="teamBoard"></div><h3>Individual standings</h3><div id="individualBoard"></div><h3>Foursome scorecards</h3><div id="groupTabs" class="groups"></div><p class="muted">Enter gross scores. Points and next-hole multipliers recalculate immediately, including after corrections.</p><div id="scorecard" class="scroll"></div></section></main>
+<script src="tilt.js"></script><script>
+const $=id=>document.getElementById(id);
+let players=[],groups=[],teams=null,scores={},active=0,holeCount=18;
+$('playerCount').innerHTML=Array.from({length:11},(_,i)=>'<option value="'+(i+2)+'">'+(i+2)+'</option>').join('');
+$('playerCount').value='4';
+function configure(){
+ const n=Number($('playerCount').value),teamMode=$('format').value==='team',size=Number($('teamSize').value);
+ if(teamMode&&(n%size||n/size<2)){ $('status').textContent='Choose a player count divisible into at least two equally sized teams.';return;}
+ $('status').textContent='';holeCount=Number($('holes').value);
+ players=Array.from({length:n},(_,i)=>({id:'p'+i,name:'Player '+(i+1)}));
+ groups=Array.from({length:Math.ceil(n/4)},(_,i)=>players.slice(i*4,(i+1)*4).map(p=>p.id));
+ teams=teamMode?Array.from({length:n/size},(_,i)=>players.slice(i*size,(i+1)*size).map(p=>p.id)):null;
+ scores=Object.fromEntries(players.map(p=>[p.id,Array.from({length:holeCount},()=>({gross:null,par:4,strokesReceived:0}))]));
+ $('assign').classList.remove('hidden');$('play').classList.add('hidden');
+ $('assignment').innerHTML=players.map((p,i)=>'<div><label>'+p.name+' · Foursome<select data-group="'+p.id+'">'+groups.map((g,j)=>'<option value="'+j+'" '+(g.includes(p.id)?'selected':'')+'>'+(j+1)+'</option>').join('')+'</select></label>'+(teams?'<label>Team<select data-team="'+p.id+'">'+teams.map((t,j)=>'<option value="'+j+'" '+(t.includes(p.id)?'selected':'')+'>'+(j+1)+'</option>').join('')+'</select></label>':'')+'</div>').join('');
+}
+$('configure').onclick=configure;
+$('apply').onclick=()=>{
+ const gs=groups.map(()=>[]),ts=teams?teams.map(()=>[]):null;
+ players.forEach(p=>{gs[Number(document.querySelector('[data-group="'+p.id+'"]').value)].push(p.id);if(ts)ts[Number(document.querySelector('[data-team="'+p.id+'"]').value)].push(p.id)});
+ try{TarheelTilt.validateGroups(players,gs,ts,Number($('teamSize').value));groups=gs;teams=ts;active=0;$('status').textContent='';$('play').classList.remove('hidden');render()}catch(e){$('status').textContent=e.message}
+};
+function render(){
+ const board=TarheelTilt.leaderboard(players,scores,teams);
+ $('teamBoard').innerHTML=teams?'<h3>Team standings</h3><div class="scroll"><table><tr><th>Team</th><th>Points</th><th>Through</th></tr>'+board.teams.map(t=>'<tr><td>Team '+t.team+'</td><td class="points">'+t.points+'</td><td>'+t.completeThrough+'</td></tr>').join('')+'</table></div>':'';
+ $('individualBoard').innerHTML='<div class="scroll"><table><tr><th>Golfer</th><th>Points</th><th>Through</th><th>Next</th></tr>'+board.individual.map(p=>'<tr><td>'+p.name+'</td><td class="points">'+p.points+'</td><td>'+p.completeThrough+'</td><td><span class="chip">'+p.nextMultiplier+'×</span></td></tr>').join('')+'</table></div>';
+ $('groupTabs').innerHTML=groups.map((g,i)=>'<button class="'+(active===i?'active':'')+'" data-tab="'+i+'">Foursome '+(i+1)+'</button>').join('');
+ document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{active=Number(b.dataset.tab);render()});
+ const members=groups[active],start=0;
+ let html='<div class="score-row"><b>Golfer</b>'+Array.from({length:9},(_,i)=>'<b>H'+(i+1)+'</b>').join('')+'</div>';
+ for(const id of members){const p=players.find(p=>p.id===id),result=TarheelTilt.scoreRound(scores[id]);html+='<div class="score-row"><b class="name">'+p.name+'</b>'+Array.from({length:9},(_,i)=>'<div><input type="number" min="1" max="15" data-score="'+id+'" data-hole="'+i+'" value="'+(scores[id][i].gross??'')+'"><small class="points">'+(result.holes[i]?.points??'—')+'</small></div>').join('')+'</div>';}
+ if(holeCount===18){html+='<h4>Back nine</h4><div class="score-row"><b>Golfer</b>'+Array.from({length:9},(_,i)=>'<b>H'+(i+10)+'</b>').join('')+'</div>';for(const id of members){const p=players.find(p=>p.id===id),result=TarheelTilt.scoreRound(scores[id]);html+='<div class="score-row"><b class="name">'+p.name+'</b>'+Array.from({length:9},(_,i)=>'<div><input type="number" min="1" max="15" data-score="'+id+'" data-hole="'+(i+9)+'" value="'+(scores[id][i+9].gross??'')+'"><small class="points">'+(result.holes[i+9]?.points??'—')+'</small></div>').join('')+'</div>';}}
+ $('scorecard').innerHTML=html;
+ document.querySelectorAll('[data-score]').forEach(input=>input.onchange=()=>{const raw=input.value;const n=Number(raw);if(raw!==''&&(!Number.isInteger(n)||n<1||n>15)){input.setCustomValidity('Enter 1–15 strokes');input.reportValidity();return;}scores[input.dataset.score][Number(input.dataset.hole)].gross=raw===''?null:n;render()});
+}
+configure();
+</script></body></html>
