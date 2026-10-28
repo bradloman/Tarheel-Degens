@@ -1119,7 +1119,8 @@ function scotchHoleResult(h,ctpPlayerId=null){
  const par=Number(hole?.par),si=Number(index?.stroke_index);
  if(!Number.isInteger(par)||par<3||par>6||!Number.isInteger(si)||si<1||si>18)return null;
  const handicaps=roster.map(p=>matchTee&&p.index!=null&&p.index!==''?courseHcp(p.index):Number(p.handicap));
- if(handicaps.some(n=>!Number.isInteger(n)||n<0))return null;
+ if(handicaps.some(n=>!Number.isInteger(n)))return null;
+ const low=Math.min(...handicaps);
  const scoresBy={},strokes={};
  for(const [i,p] of roster.entries()){
   const row=(p.guest?guestScores:scores).find(x=>Number(x.hole_number)===h&&(p.guest?x.guest_id:x.player_id)===p.id);
@@ -1129,7 +1130,7 @@ function scotchHoleResult(h,ctpPlayerId=null){
   if(raw==null||String(raw).trim()===''||!Number.isInteger(gross)||gross<1)return null;
   const key=(p.guest?'guest:':'player:')+p.id;
   scoresBy[key]=gross;
-  strokes[key]=strokeCount(handicaps[i],si);
+  strokes[key]=strokeCount(handicaps[i]-low,si);
  }
  const ctp=roster.find(p=>(p.guest?'guest:':'player:')+p.id===ctpPlayerId);
  return window.TarheelScotch.scoreHole({teams:groups.map(g=>g.map(p=>(p.guest?'guest:':'player:')+p.id)),scores:scoresBy,strokes,par,ctpPlayerId:ctp?ctpPlayerId:null,birdieMode:scotchOptions().birdieMode||'gross'});
@@ -1138,8 +1139,10 @@ function scotchHoleResult(h,ctpPlayerId=null){
 function updateScotchNetDecorations(){
  if(match?.game_type!=='scotch')return;
  const roster=orderedRoster();
+ const handicaps=roster.map(p=>matchTee&&p.index!=null&&p.index!==''?courseHcp(p.index):Number(p.handicap));
+ const low=handicaps.every(Number.isInteger)?Math.min(...handicaps):null;
  for(const p of roster){
-  const hcp=matchTee&&p.index!=null&&p.index!==''?courseHcp(p.index):Number(p.handicap);
+  const hcp=low===null?null:handicaps[roster.indexOf(p)]-low;
   for(const input of el('scoreRows').querySelectorAll('input[data-player="'+p.id+'"][data-hole]')){
    const h=Number(input.dataset.hole),wrap=input.closest('.score-wrap');
    if(!wrap)continue;
@@ -1152,7 +1155,7 @@ function updateScotchNetDecorations(){
    const received=valid?strokeCount(hcp,si):0;
    dots.textContent=valid&&received>0?'●'.repeat(Math.min(received,3)):'';
    const gross=Number(input.value);
-   if(!valid||!Number.isInteger(par)||input.value.trim()===''||!Number.isInteger(gross)||gross<1)return;
+   if(!valid||!Number.isInteger(par)||input.value.trim()===''||!Number.isInteger(gross)||gross<1)continue;
    const delta=gross-received-par;
    if(delta<=-2)wrap.classList.add('net-eagle');
    else if(delta===-1)wrap.classList.add('net-birdie');
@@ -1199,7 +1202,7 @@ function renderScotch(){
  el('rosterStatus').textContent=roster.length+' players · two teams of two';
  el('nineSelector').classList.toggle('hidden',Number(match.hole_count)!==18);
  el('frontNine').className=activeNine===1?'':'secondary';el('backNine').className=activeNine===2?'':'secondary';
- el('scoreHead').innerHTML='<th>Hole / CTP</th>'+roster.map(p=>'<th class="player-head"><span class="team-mini">T'+(teamAssignments.find(t=>p.guest?t.guest_id===p.id:t.player_id===p.id)?.team_number||'–')+'</span> '+safe(shortName(p.name))+'</th>').join('')+'<th class="bet-col">Total</th>';
+ el('scoreHead').innerHTML='<th>Hole / CTP</th>'+roster.map(p=>'<th class="player-head"><span class="team-mini">T'+(teamAssignments.find(t=>p.guest?t.guest_id===p.id:t.player_id===p.id)?.team_number||'–')+'</span> '+safe(shortName(p.name))+'<small>CH '+(matchTee&&p.index!=null&&p.index!==''?courseHcp(p.index):p.handicap)+'</small></th>').join('')+'<th class="bet-col">Total</th>';
  const start=activeNine===2&&Number(match.hole_count)===18?10:1,end=Math.min(Number(match.hole_count),start+8);
  el('scoreRows').innerHTML=Array.from({length:end-start+1},(_,i)=>{const h=start+i,par=teeHoles.find(x=>Number(x.hole_number)===h)?.par;return '<tr><th>'+h+'<small>Par '+(par??'—')+'</small><select aria-label="Hole '+h+' closest to pin" data-scotch-ctp="'+h+'" style="width:100%;max-width:95px;min-width:0;padding:2px;font-size:10px;margin-top:4px"><option value="">CTP: None</option></select></th>'+roster.map(p=>'<td><div class="score-wrap"><input type="number" min="1" max="30" data-hole="'+h+'" data-player="'+safe(p.id)+'" data-guest="'+p.guest+'" value="'+safe((p.guest?guestScores:scores).find(x=>Number(x.hole_number)===h&&(p.guest?x.guest_id:x.player_id)===p.id)?.gross_strokes??'')+'" '+(posted()?'disabled':'')+'></div></td>').join('')+'<td class="bet-col" data-scotch-points="'+h+'">—</td></tr><tr><td colspan="6" data-scotch-detail="'+h+'" style="font-size:10px;color:#60758a;padding:2px 6px 6px"></td></tr>';}).join('');
  el('scoreRows').querySelectorAll('input[data-hole]').forEach(x=>x.addEventListener('input',()=>{updateScoreTotals();updateScotchPreview();scheduleHoleSave(Number(x.dataset.hole));}));
