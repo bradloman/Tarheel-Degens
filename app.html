@@ -1114,9 +1114,9 @@ function scotchHoleResult(h,ctpPlayerId=null){
  if(groups.some(g=>g.length!==2))return null;
  const hole=teeHoles.find(x=>Number(x.hole_number)===h),index=strokeIndices.find(x=>Number(x.hole_number)===h);
  const par=Number(hole?.par),si=Number(index?.stroke_index);
- if(!Number.isInteger(par)||!Number.isInteger(si)||si<1)return null;
+ if(!Number.isInteger(par)||par<3||par>6||!Number.isInteger(si)||si<1||si>18)return null;
  const handicaps=roster.map(p=>matchTee&&p.index!=null&&p.index!==''?courseHcp(p.index):Number(p.handicap));
- if(handicaps.some(n=>!Number.isInteger(n)))return null;
+ if(handicaps.some(n=>!Number.isInteger(n)||n<0))return null;
  const scoresBy={},strokes={};
  for(const [i,p] of roster.entries()){
   const row=(p.guest?guestScores:scores).find(x=>Number(x.hole_number)===h&&(p.guest?x.guest_id:x.player_id)===p.id);
@@ -1308,6 +1308,7 @@ const button=el('finalizeMatch');if(button.disabled)return;
 button.disabled=true;button.textContent='Checking saved scores…';
 try{
 if(!match)throw Error('Open a match first.');
+if(match.game_type==='scotch')throw Error('Scotch final posting is disabled until settlement and player records are verified.');
 if(posted())throw Error('This match is already posted.');
 if(savingHoles.size||saveTimers.size)throw Error('Some holes are still saving. Wait for the save confirmation and try again.');
 if(hasUnsavedScores())throw Error('The visible scores have not finished saving. Wait for the save confirmation and try again.');
