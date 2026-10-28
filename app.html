@@ -1135,8 +1135,35 @@ function scotchHoleResult(h,ctpPlayerId=null){
  return window.TarheelScotch.scoreHole({teams:groups.map(g=>g.map(p=>(p.guest?'guest:':'player:')+p.id)),scores:scoresBy,strokes,par,ctpPlayerId:ctp?ctpPlayerId:null,birdieMode:scotchOptions().birdieMode||'gross'});
 }
 
+function updateScotchNetDecorations(){
+ if(match?.game_type!=='scotch')return;
+ const roster=orderedRoster();
+ for(const p of roster){
+  const hcp=matchTee&&p.index!=null&&p.index!==''?courseHcp(p.index):Number(p.handicap);
+  for(const input of el('scoreRows').querySelectorAll('input[data-player="'+p.id+'"][data-hole]')){
+   const h=Number(input.dataset.hole),wrap=input.closest('.score-wrap');
+   if(!wrap)continue;
+   wrap.classList.remove('net-birdie','net-eagle','net-bogey','net-double');
+   let dots=wrap.querySelector('.stroke-dots');
+   if(!dots){dots=document.createElement('span');dots.className='stroke-dots';wrap.insertBefore(dots,input);}
+   const si=Number(strokeIndices.find(x=>Number(x.hole_number)===h)?.stroke_index);
+   const par=Number(teeHoles.find(x=>Number(x.hole_number)===h)?.par);
+   const valid=Number.isInteger(hcp)&&hcp>=0&&Number.isInteger(si)&&si>=1&&si<=18;
+   const received=valid?strokeCount(hcp,si):0;
+   dots.textContent=valid&&received>0?'●'.repeat(Math.min(received,3)):'';
+   const gross=Number(input.value);
+   if(!valid||!Number.isInteger(par)||input.value.trim()===''||!Number.isInteger(gross)||gross<1)return;
+   const delta=gross-received-par;
+   if(delta<=-2)wrap.classList.add('net-eagle');
+   else if(delta===-1)wrap.classList.add('net-birdie');
+   else if(delta===1)wrap.classList.add('net-bogey');
+   else if(delta>=2)wrap.classList.add('net-double');
+  }
+ }
+}
 function updateScotchPreview(){
  if(match?.game_type!=='scotch')return;
+ updateScotchNetDecorations();
  const totals=[0,0],roster=orderedRoster(),team=p=>teamAssignments.find(t=>p.guest?t.guest_id===p.id:t.player_id===p.id)?.team_number;
  const groups=[roster.filter(p=>team(p)===1),roster.filter(p=>team(p)===2)];
  const names=groups.map((g,i)=>g.length===2?teamLastNames(g):'Team '+(i+1));
