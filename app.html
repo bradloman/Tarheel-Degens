@@ -1099,12 +1099,15 @@ async function saveScotchCtp(h,value){
  await loadScotchCtp();renderScotchCtp();updateScotchPreview();
 }
 function renderScotchCtp(){
- const box=el('scotchCtpLive');if(!box)return;
- box.classList.toggle('hidden',match?.game_type!=='scotch');
+ const box=el('scotchCtpLive');if(box)box.classList.add('hidden');
  if(match?.game_type!=='scotch')return;
- const roster=orderedRoster(),start=activeNine===2&&Number(match.hole_count)===18?10:1,end=Math.min(Number(match.hole_count),start+8);
- box.innerHTML='<h3>Scotch · Closest to pin</h3><p class="muted">Choose the closest ball on the green in regulation for each hole, or None.</p>'+Array.from({length:end-start+1},(_,i)=>{const h=start+i;return '<label>Hole '+h+'</label><select data-scotch-ctp="'+h+'" '+(posted()?'disabled':'')+'><option value="">None</option>'+roster.map(p=>{const key=(p.guest?'guest:':'player:')+p.id;return '<option value="'+safe(key)+'" '+(scotchCtpWinner(h)===key?'selected':'')+'>'+safe(shortName(p.name))+'</option>'}).join('')+'</select>'}).join('');
- box.querySelectorAll('select[data-scotch-ctp]').forEach(select=>select.addEventListener('change',()=>saveScotchCtp(Number(select.dataset.scotchCtp),select.value)));
+ const roster=orderedRoster();
+ el('scoreRows').querySelectorAll('select[data-scotch-ctp]').forEach(select=>{
+  const h=Number(select.dataset.scotchCtp);
+  select.innerHTML='<option value="">CTP: None</option>'+roster.map(p=>{const key=(p.guest?'guest:':'player:')+p.id;return '<option value="'+safe(key)+'" '+(scotchCtpWinner(h)===key?'selected':'')+'>'+safe(shortName(p.name))+'</option>'}).join('');
+  select.disabled=posted();
+  select.addEventListener('change',()=>saveScotchCtp(h,select.value));
+ });
 }
 function scotchOptions(){try{return JSON.parse(match?.notes||'{}').scotch||{};}catch{return {};}}
 function scotchHoleResult(h,ctpPlayerId=null){
@@ -1135,17 +1138,27 @@ function scotchHoleResult(h,ctpPlayerId=null){
 function updateScotchPreview(){
  if(match?.game_type!=='scotch')return;
  const totals=[0,0],roster=orderedRoster(),team=p=>teamAssignments.find(t=>p.guest?t.guest_id===p.id:t.player_id===p.id)?.team_number;
+ const groups=[roster.filter(p=>team(p)===1),roster.filter(p=>team(p)===2)];
+ const names=groups.map((g,i)=>g.length===2?teamLastNames(g):'Team '+(i+1));
  let scored=0;
+ const labels={lowBall:'Low ball +2',lowTotal:'Low total +2',closestToPin:'CTP +1',birdieOrBetter:'Birdie +1'};
  for(let h=1;h<=Number(match.hole_count);h++){
   let result=null;
   try{result=scotchHoleResult(h,scotchCtpWinner(h));}catch(e){console.warn('Scotch hole '+h,e);}
   const cell=el('scoreRows').querySelector('[data-scotch-points="'+h+'"]');
   if(result){totals[0]+=result.points[0];totals[1]+=result.points[1];scored++;}
-  if(cell)cell.textContent=result?result.points[0]+'–'+result.points[1]+(result.multiplier>1?' · '+result.multiplier+'×':''):'—';
+  if(cell){
+   if(!result)cell.textContent='—';
+   else{
+    const detail=result.breakdown.map((items,i)=>items.length?'T'+(i+1)+': '+items.map(x=>labels[x]||x).join(', '):'').filter(Boolean).join(' | ');
+    cell.innerHTML='<strong>'+totals[0]+'–'+totals[1]+'</strong><small style="display:block;font-size:10px">Hole '+result.points[0]+'–'+result.points[1]+(result.multiplier>1?' · '+result.multiplier+'×':'')+'</small>';
+    cell.title=detail;
+    const row=cell.closest('tr'),info=row?.querySelector('[data-scotch-detail]');
+    if(info)info.textContent=detail||'All categories tied';
+   }
+  }
  }
- const groups=[roster.filter(p=>team(p)===1),roster.filter(p=>team(p)===2)];
- const names=groups.map((g,i)=>g.length===2?teamLastNames(g):'Team '+(i+1));
- el('bets').innerHTML='<strong>Scotch standings</strong><p>'+safe(names[0])+': '+totals[0]+' · '+safe(names[1])+': '+totals[1]+'</p><p>'+scored+' of '+match.hole_count+' holes scored</p>';
+ el('bets').innerHTML='<strong>Scotch · Cumulative points</strong><p>Team 1 ('+safe(names[0])+'): '+totals[0]+' · Team 2 ('+safe(names[1])+'): '+totals[1]+'</p><small>Each hole: low net ball 2, low net team total 2, CTP 1, birdie 1. Tied categories earn 0. Sweep multipliers apply.</small>';
  const options=scotchOptions(),settlement=window.TarheelScotch?.settle({teamPoints:totals,bettingMode:options.bettingMode||'fixed',stake:Number(match.stake)||0});
  el('financialSummary').innerHTML='<strong>Projected per-player settlement</strong><p>'+safe(names[0])+': $'+(settlement?.teamAEach||0).toFixed(2)+' each</p><p>'+safe(names[1])+': $'+(settlement?.teamBEach||0).toFixed(2)+' each</p><small>Scotch posting is disabled during testing.</small>';
  el('presses').textContent='No presses in Scotch.';
@@ -1159,9 +1172,9 @@ function renderScotch(){
  el('rosterStatus').textContent=roster.length+' players · two teams of two';
  el('nineSelector').classList.toggle('hidden',Number(match.hole_count)!==18);
  el('frontNine').className=activeNine===1?'':'secondary';el('backNine').className=activeNine===2?'':'secondary';
- el('scoreHead').innerHTML='<th>Hole</th>'+roster.map(p=>'<th class="player-head">'+safe(shortName(p.name))+'</th>').join('')+'<th class="bet-col">Points</th>';
+ el('scoreHead').innerHTML='<th>Hole / CTP</th>'+roster.map(p=>'<th class="player-head"><span class="team-mini">T'+(teamAssignments.find(t=>p.guest?t.guest_id===p.id:t.player_id===p.id)?.team_number||'–')+'</span> '+safe(shortName(p.name))+'</th>').join('')+'<th class="bet-col">Total</th>';
  const start=activeNine===2&&Number(match.hole_count)===18?10:1,end=Math.min(Number(match.hole_count),start+8);
- el('scoreRows').innerHTML=Array.from({length:end-start+1},(_,i)=>{const h=start+i,par=teeHoles.find(x=>Number(x.hole_number)===h)?.par;return '<tr><th>'+h+'<small>Par '+(par??'—')+'</small></th>'+roster.map(p=>'<td><div class="score-wrap"><input type="number" min="1" max="30" data-hole="'+h+'" data-player="'+safe(p.id)+'" data-guest="'+p.guest+'" value="'+safe((p.guest?guestScores:scores).find(x=>Number(x.hole_number)===h&&(p.guest?x.guest_id:x.player_id)===p.id)?.gross_strokes??'')+'" '+(posted()?'disabled':'')+'></div></td>').join('')+'<td class="bet-col" data-scotch-points="'+h+'">—</td></tr>';}).join('');
+ el('scoreRows').innerHTML=Array.from({length:end-start+1},(_,i)=>{const h=start+i,par=teeHoles.find(x=>Number(x.hole_number)===h)?.par;return '<tr><th>'+h+'<small>Par '+(par??'—')+'</small><select aria-label="Hole '+h+' closest to pin" data-scotch-ctp="'+h+'" style="width:100%;max-width:95px;min-width:0;padding:2px;font-size:10px;margin-top:4px"><option value="">CTP: None</option></select></th>'+roster.map(p=>'<td><div class="score-wrap"><input type="number" min="1" max="30" data-hole="'+h+'" data-player="'+safe(p.id)+'" data-guest="'+p.guest+'" value="'+safe((p.guest?guestScores:scores).find(x=>Number(x.hole_number)===h&&(p.guest?x.guest_id:x.player_id)===p.id)?.gross_strokes??'')+'" '+(posted()?'disabled':'')+'></div></td>').join('')+'<td class="bet-col" data-scotch-points="'+h+'">—</td></tr><tr><td colspan="6" data-scotch-detail="'+h+'" style="font-size:10px;color:#60758a;padding:2px 6px 6px"></td></tr>';}).join('');
  el('scoreRows').querySelectorAll('input[data-hole]').forEach(x=>x.addEventListener('input',()=>{updateScoreTotals();updateScotchPreview();scheduleHoleSave(Number(x.dataset.hole));}));
  enableScoreEntryAdvance();updateScoreTotals();renderScotchCtp();updateScotchPreview();
  el('handicapSetup').innerHTML='<p class="muted">Scotch uses full course handicaps. Posting is disabled during testing.</p>';
