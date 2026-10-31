@@ -1,9 +1,9 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Records • Tarheel Degens</title><style>
 :root{font-family:system-ui,-apple-system,sans-serif;color:#142d50;background:#c5e5f8}*{box-sizing:border-box}body{margin:0}header{background:#56a0d2;padding:18px;text-align:center;color:white}h1{margin:0;font-size:24px}main{max-width:850px;margin:auto;padding:12px}.card{background:white;border:1px solid #b8d6ea;border-radius:14px;padding:16px;margin:12px 0}.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:135px}label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}select{width:100%;padding:10px;border:1px solid #a8c7da;border-radius:9px;background:white}a{color:#124d78}header a{color:white}.muted{color:#60798c;font-size:13px}.stat{background:#eff7fc;border-radius:10px;padding:12px;text-align:center}.stat strong{display:block;font-size:25px}.pill{display:inline-block;background:#e6f2fa;padding:4px 8px;border-radius:12px;font-size:12px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 5px;text-align:left;border-bottom:1px solid #e2eaf0}th{color:#526d82}#status{white-space:pre-wrap}.match{border-bottom:1px solid #e3edf4;padding:12px 0}.match:last-child{border:0}.section-note{font-size:12px;color:#617d91}.positive{color:#146b4c}.negative{color:#a33439}.match-meta{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:7px}.match-money{font-size:12px;font-weight:700}.leader-row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #e3edf4}.leader-row:last-child{border:0}.stat strong{font-variant-numeric:tabular-nums}@media(max-width:440px){.card{padding:13px}.stat{padding:9px;font-size:12px}.stat strong{font-size:22px}h2{font-size:20px}}</style></head><body>
 <header><h1>Tarheel Degens</h1><div>PLAYER RECORDS</div><p><a href="app.html">← Back to Live App</a></p></header>
-<main><section class="card"><h2>Leaderboards</h2><div class="row"><div><label>Season</label><select id="year"><option value="all">All Time</option><option value="2026">2026</option></select></div><div><label>Game</label><select id="format"><option value="all">All Formats</option></select></div></div><div id="leaders"></div></section><section class="card"><h2>Head-to-Head</h2><div class="row"><div><label for="a">Player 1</label><select id="a"></select></div><div><label for="b">Player 2</label><select id="b"></select></div></div><p id="status" class="muted">Loading posted match history…</p></section>
+<main><section class="card"><h2>Leaderboards</h2><div class="row"><div><label>Season</label><select id="year"><option value="all">All Time</option><option value="2026">2026</option></select></div><div><label>Game</label><select id="format"><option value="all">All Formats</option></select></div></div><div id="recordLeaders"></div><div id="leaders"></div></section><section class="card"><h2>Head-to-Head</h2><div class="row"><div><label for="a">Player 1</label><select id="a"></select></div><div><label for="b">Player 2</label><select id="b"></select></div></div><p id="status" class="muted">Loading posted match history…</p></section>
 <section class="card"><h2 id="heading">Matchup</h2><div class="row"><div class="stat"><strong id="shared">—</strong>Shared matches</div><div class="stat"><strong id="against">—</strong>Opponents</div><div class="stat"><strong id="together">—</strong>Teammates</div></div><p class="muted">Only completed matches count. Individual competitions are shown separately; unassigned singles are not assumed to be team matches. Win/loss and financial results will be added after validating each game's settlement logic.</p></section>
-<section class="card"><h2>Scoring &amp; Winnings</h2><div id="playerStats"></div><div id="formatBreakdown"></div></section><section class="card"><h2>Head-to-Head by Game</h2><div id="rivalryFormats"></div></section><section class="card"><h2>Match history</h2><div id="history" class="muted">Loading…</div></section></main>
+<section class="card"><h2>Scoring &amp; Winnings</h2><div id="recordComparison"></div><div id="playerStats"></div><div id="formatBreakdown"></div></section><section class="card"><h2>Head-to-Head by Game</h2><div id="rivalryRecord"></div><div id="rivalryFormats"></div></section><section class="card"><h2>Match history</h2><div id="history" class="muted">Loading…</div></section></main>
 <script type="module">
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
 const db=createClient('https://ptbszujuodpkchuwppcv.supabase.co','sb_publishable_mJdS8K0qRsrb_7nyOQ4Tzw_QRmxXBV1');
@@ -17,7 +17,7 @@ const rows=eligibleMatches().filter(m=>identityFor(a,m)&&identityFor(b)).sort((x
 const decorated=rows.map(m=>{const ta=teamFor(a,m),tb=teamFor(b,m);let relation;if(['quota','tilt'].includes(m.game_type)){relation='Individual / field competition';individual++}else if(ta!=null&&tb!=null){relation=ta===tb?'Teammates':'Opponents';if(ta===tb)teammates++;else opponents++}else{relation='Unclassified (team assignment missing)';unclassified++}return {m,relation}});
 $('heading').textContent=a.display_name+' vs. '+b.display_name;$('shared').textContent=rows.length;$('against').textContent=opponents;$('together').textContent=teammates;
 $('status').textContent=rows.length+' completed shared matches · '+individual+' individual competition(s) · '+unclassified+' unclassified. Results reflect currently accessible database rows.';
-renderStats(a,b,rows);renderRivalry(a,b,decorated);$('history').innerHTML=decorated.length?decorated.map(({m,relation})=>'<div class="match"><strong>'+esc(m.match_date)+'</strong> · '+esc(labelGame(m.game_type))+'<div class="match-meta"><span class="pill">'+esc(relation)+'</span>'+[a,b].map(p=>{const cents=settlementCents(p,m.id);return cents===null?'':'<span class="match-money '+(cents>=0?'positive':'negative')+'">'+esc(p.display_name.split(' ')[0])+': '+dollars(cents/100)+'</span>'}).join('')+'</div></div>').join(''):'No completed shared matches found.'}}
+renderStats(a,b,rows);renderRivalry(a,b,decorated);renderRecords(a,b,rows);$('history').innerHTML=decorated.length?decorated.map(({m,relation})=>'<div class="match"><strong>'+esc(m.match_date)+'</strong> · '+esc(labelGame(m.game_type))+'<div class="match-meta"><span class="pill">'+esc(relation)+'</span>'+[a,b].map(p=>{const cents=settlementCents(p,m.id);return cents===null?'':'<span class="match-money '+(cents>=0?'positive':'negative')+'">'+esc(p.display_name.split(' ')[0])+': '+dollars(cents/100)+'</span>'}).join('')+'</div></div>').join(''):'No completed shared matches found.'}}
 
 
 function eligibleMatches(){return matches.filter(m=>m.status==='completed'&&($('year').value==='all'||m.match_date.startsWith($('year').value))&&($('format').value==='all'||m.game_type===$('format').value))}
@@ -29,6 +29,40 @@ const dollars=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString(undefined,{minimu
 
 const labelGame=t=>String(t||'').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
 function settlementCents(p,id){const rr=results.filter(r=>r.match_id===id&&belongs(p,r));return rr.length?rr.reduce((n,r)=>n+Number(r.net_cents||0),0):null}
+
+function matchOutcome(p,m){
+ const rr=results.filter(r=>r.match_id===m.id&&belongs(p,r));
+ if(rr.length!==1)return null;
+ const r=rr[0];
+ if(['hammer','scotch'].includes(m.game_type)){
+  const net=Number(r.net_cents);if(!Number.isFinite(net))return null;
+  return net>0?'W':net<0?'L':'T';
+ }
+ if(['nines','quota'].includes(m.game_type)||(m.game_type==='tilt'&&r.team_number==null)){
+  const place=Number(r.finishing_place);
+  if(!Number.isInteger(place)||place<1)return null;
+  const others=results.filter(x=>x.match_id===m.id&&x!==r&&x.finishing_place!=null);
+  if(!others.length)return null;
+  const best=Math.min(place,...others.map(x=>Number(x.finishing_place)));
+  if(place!==best)return 'L';
+  return others.some(x=>Number(x.finishing_place)===best)?'T':'W';
+ }
+ return null;
+}
+function recordFor(p,ms){const o={W:0,L:0,T:0,excluded:0};for(const m of ms.filter(m=>identityFor(p,m))){const v=matchOutcome(p,m);if(v)o[v]++;else o.excluded++}return o}
+const recordText=r=>r.W+'–'+r.L+'–'+r.T;
+const winPct=r=>r.W+r.L+r.T?((r.W+r.T/2)/(r.W+r.L+r.T)*100).toFixed(1)+'%':'—';
+function renderRecords(a,b,shared){
+ const all=eligibleMatches(),ra=recordFor(a,all),rb=recordFor(b,all);
+ $('recordComparison').innerHTML='<h3>Match Records (Supported Formats)</h3><div class="row">'+[[a,ra],[b,rb]].map(([p,r])=>'<div class="stat"><b>'+esc(p.display_name)+'</b><strong>'+recordText(r)+'</strong><p>'+winPct(r)+' win percentage</p><p class="section-note">'+r.excluded+' match(es) awaiting result calculation</p></div>').join('')+'</div>';
+ const opponents=shared.filter(m=>{const ta=teamFor(a,m),tb=teamFor(b,m);if(ta!=null&&tb!=null)return ta!==tb;return !['quota','tilt'].includes(m.game_type)&&!teams.some(t=>t.match_id===m.id)});
+ const known=opponents.filter(m=>matchOutcome(a,m)&&matchOutcome(b,m));
+ const ar=recordFor(a,known),br=recordFor(b,known);
+ $('rivalryRecord').innerHTML='<h3>Competitive Record</h3><div class="row"><div class="stat"><b>'+esc(a.display_name)+'</b><strong>'+recordText(ar)+'</strong></div><div class="stat"><b>'+esc(b.display_name)+'</b><strong>'+recordText(br)+'</strong></div></div><p class="section-note">'+known.length+' head-to-head match(es) with supported outcomes; '+(opponents.length-known.length)+' awaiting result calculation. Team partners and field competitions excluded.</p>';
+ const ranking=directory.map(p=>({p,r:recordFor(p,all)})).filter(x=>x.r.W+x.r.L+x.r.T>0).sort((x,y)=>(y.r.W+y.r.T/2)/(y.r.W+y.r.L+y.r.T)-(x.r.W+x.r.T/2)/(x.r.W+x.r.L+x.r.T));
+ $('recordLeaders').innerHTML='<h3>Winning Percentage</h3><p class="section-note">Supported outcomes only · minimum 1 match · ties count as half a win</p>'+(ranking.length?'<table>'+ranking.slice(0,8).map((x,i)=>'<tr><td>'+(i+1)+'. '+esc(x.p.display_name)+'</td><td>'+recordText(x.r)+'</td><td style="text-align:right"><b>'+winPct(x.r)+'</b></td></tr>').join('')+'</table>':'<p class="muted">No qualifying records yet.</p>');
+}
+
 function renderRivalry(a,b,decorated){const types=[...new Set(decorated.map(x=>x.m.game_type))].sort();$('rivalryFormats').innerHTML=types.length?'<table><thead><tr><th>Format</th><th>Matches</th><th>'+esc(a.display_name.split(' ')[0])+'</th><th>'+esc(b.display_name.split(' ')[0])+'</th></tr></thead><tbody>'+types.map(type=>{const ms=decorated.filter(x=>x.m.game_type===type);const amount=p=>{const values=ms.map(x=>settlementCents(p,x.m.id)).filter(v=>v!==null);return values.length?dollars(values.reduce((a,b)=>a+b,0)/100):'—'};return '<tr><td>'+esc(labelGame(type))+'</td><td>'+ms.length+'</td><td>'+amount(a)+'</td><td>'+amount(b)+'</td></tr>'}).join('')+'</tbody></table><p class="section-note">Money is each player’s total settlement in these shared matches, not necessarily money paid directly between the two players.</p>':'<p class="muted">No shared completed matches for this filter.</p>'}
 
 function renderStats(a,b,shared){const people=[a,b].map(p=>({p,s:playerStats(p)}));$('playerStats').innerHTML='<div class="row">'+people.map(({p,s})=>'<div class="stat"><b>'+esc(p.display_name)+'</b><p><strong>'+esc(s.avg)+'</strong> Gross average (18-hole equivalent)</p><p>'+esc(s.best)+' · Best 18-hole equivalent</p><p>'+s.rounds+' complete rounds</p><p><b>'+dollars(s.money)+'</b> Recorded net winnings</p><p class="muted">'+s.settled+' recorded settlements</p></div>').join('')+'</div>';
