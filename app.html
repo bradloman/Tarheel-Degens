@@ -656,6 +656,12 @@ const {data:r,error:e}=await db.from('quota_match_results').select('finishing_pl
 if(e||!r)return null;
 return {m,amount:Number(r.net_cents)/100,payout:Number(r.gross_payout_cents)/100,buyin:Number(r.buyin_cents)/100,place:r.finishing_place,field:Number(m.player_count),quota:r.quota_target,points:r.earned_points,quotaScore:r.quota_score,result:r.finishing_place===1?'win':'loss'};
 }
+async function profileNinesBetting(m,p,kind){
+ const key=kind==='registered'?'player_id':'directory_entry_id';
+ const {data:r,error:e}=await db.from('nines_match_results').select('points,gross_strokes,finishing_place,net_cents').eq('match_id',m.id).eq(key,p.id).maybeSingle();
+ if(e)throw e;if(!r)return null;
+ return {m,amount:Number(r.net_cents)/100,points:r.points,gross:r.gross_strokes,place:r.finishing_place,result:r.finishing_place===1?'win':'loss',nines:true};
+}
 async function profileTiltBetting(m,p,kind){
 const key=kind==='registered'?'player_id':'directory_entry_id';
 const {data:r,error:e}=await db.from('tilt_match_results').select('points,gross_strokes,finishing_place,net_cents,team_number').eq('match_id',m.id).eq(key,p.id).maybeSingle();
@@ -689,7 +695,7 @@ const {data:matches,error:me}=await db.from('matches').select('id,match_date,gam
 const posted=(matches||[]).filter(m=>[9,18].includes(Number(m.hole_count))&&['posted','completed','finalized'].includes(String(m.status).toLowerCase()));
 const evaluated=await Promise.all(posted.slice(0,40).map(async m=>{
 try{
-if(m.game_type==='tilt'){const tilt=await profileTiltBetting(m,p,kind);return {m,result:tilt?.result??null,tilt,gross:tilt?.gross??null,net:null}}if(m.game_type==='quota'){const quota=await profileQuotaBetting(m,p,kind);return {m,result:quota?.result??null,quota, gross:null,net:null}}
+if(m.game_type==='nines'){const nines=await profileNinesBetting(m,p,kind);return {m,result:nines?.result??null,nines,gross:nines?.gross??null,net:null}}if(m.game_type==='tilt'){const tilt=await profileTiltBetting(m,p,kind);return {m,result:tilt?.result??null,tilt,gross:tilt?.gross??null,net:null}}if(m.game_type==='quota'){const quota=await profileQuotaBetting(m,p,kind);return {m,result:quota?.result??null,quota, gross:null,net:null}}
 if(m.game_type==='high_low'){const highLow=await profileHighLowBetting(m,p,kind);return {m,result:highLow?.result??null,highLow,gross:null,net:null}}
 if(m.game_type==='scotch'){const scotch=await profileScotchBetting(m,p,kind);return {m,result:scotch?.result??null,scotch,gross:null,net:null}}if(m.game_type==='hammer'){const hammer=await profileHammerBetting(m,p,kind);return {m,result:hammer?.result??null,hammer,gross:null,net:null}}
 const [mp,gp,hs,gs,teams]=await Promise.all([
@@ -762,10 +768,10 @@ async function profileScotchBetting(m,p,kind){
  if(!data)return null;
  return {m,amount:Number(data.net_cents)/100,result:data.team_points>data.opponent_points?'win':data.team_points<data.opponent_points?'loss':'tie'};
 }
-const betting=(await Promise.all(posted.slice(0,40).map(m=>m.game_type==='scotch'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.scotch??null):m.game_type==='hammer'?profileHammerBetting(m,p,kind):m.game_type==='tilt'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.tilt??null):m.game_type==='quota'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.quota??null):m.game_type==='high_low'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.highLow??null):profileNassauBetting(m,p,kind)))).filter(x=>x!==null);
+const betting=(await Promise.all(posted.slice(0,40).map(m=>m.game_type==='nines'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.nines??null):m.game_type==='scotch'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.scotch??null):m.game_type==='hammer'?profileHammerBetting(m,p,kind):m.game_type==='tilt'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.tilt??null):m.game_type==='quota'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.quota??null):m.game_type==='high_low'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.highLow??null):profileNassauBetting(m,p,kind)))).filter(x=>x!==null);
 const won=betting.reduce((a,x)=>a+Math.max(0,x.amount),0),lost=betting.reduce((a,x)=>a+Math.max(0,-x.amount),0);
 const money=n=>(n>0?'+':n<0?'-':'')+'$'+Math.abs(n).toFixed(2);
-career.innerHTML+='<h3>Betting record</h3><div class="profile-stats-grid">'+[['Won',money(won)],['Lost',money(-lost)],['Net',money(won-lost)]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Completed Nassau, Better Ball, Hammer and High-Low bets, including presses where applicable, Quota payouts net of buy-ins, Tilt and Scotch settlements. Team stakes are per person.</p>'+betting.map(x=>'<div class="profile-record-row"><span>'+safe(x.m.match_date)+' · '+safe(displayGameType(x.m.game_type))+'</span><strong>'+money(x.amount)+'</strong></div>').join('');
+career.innerHTML+='<h3>Betting record</h3><div class="profile-stats-grid">'+[['Won',money(won)],['Lost',money(-lost)],['Net',money(won-lost)]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Completed Nassau, Better Ball, Hammer and High-Low bets, including presses where applicable, Quota payouts net of buy-ins, Tilt, Scotch and Nines settlements. Team stakes are per person.</p>'+betting.map(x=>'<div class="profile-record-row"><span>'+safe(x.m.match_date)+' · '+safe(displayGameType(x.m.game_type))+'</span><strong>'+money(x.amount)+'</strong></div>').join('');
 recent.innerHTML=(matches||[]).slice(0,10).map(m=>'<div class="profile-record-row"><span><strong>'+safe(displayGameType(m.game_type))+'</strong><br><small>'+safe(m.match_date)+' · '+safe(m.status)+'</small></span><button class="secondary" type="button" data-profile-match="'+safe(m.id)+'">Scorecard</button></div>').join('');
 recent.querySelectorAll('[data-profile-match]').forEach(b=>b.onclick=()=>openHistoricalScorecard(b.dataset.profileMatch,p,kind));
 }catch(e){career.textContent='Could not load match history: '+(e?.message||String(e))}
