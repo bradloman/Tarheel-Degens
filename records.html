@@ -34,7 +34,8 @@ function matchOutcome(p,m){
  const rr=results.filter(r=>r.match_id===m.id&&belongs(p,r));
  if(rr.length!==1)return null;
  const r=rr[0];
- if(['hammer','scotch'].includes(m.game_type)){
+ if(m.game_type==='scotch'){const ours=Number(r.team_points),theirs=Number(r.opponent_points);if(!Number.isFinite(ours)||!Number.isFinite(theirs))return null;return ours>theirs?'W':ours<theirs?'L':'T';}
+ if(m.game_type==='hammer'){
   const net=Number(r.net_cents);if(!Number.isFinite(net))return null;
   return net>0?'W':net<0?'L':'T';
  }
