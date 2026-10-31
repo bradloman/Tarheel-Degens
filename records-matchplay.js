@@ -10,12 +10,13 @@ export function netMatchResult(player,match,participants,assignments,indexes){
  const minimum=Math.min(...participants.map(x=>x.ch));
  let margin=0;
  for(let hole=1;hole<=n;hole++){
-  const si=Number(indexes.find(x=>x.hole_number===hole)?.stroke_index);
+  const raw=Number(indexes.find(x=>x.hole_number===hole)?.stroke_index);
+  const si=n===9?[...indexes].sort((a,b)=>a.stroke_index-b.stroke_index).findIndex(x=>x.hole_number===hole)+1:raw;
   if(!Number.isInteger(si)||si<1||si>n)return null;
   const values=participants.map(x=>{
    const gross=x.scores.find(s=>s.hole_number===hole)?.gross_strokes;
    if(gross==null||!Number.isFinite(Number(gross)))return null;
-   const diff=Math.max(0,Math.round(x.ch-minimum));
+   const diff=Math.max(0,Math.round((x.ch-minimum)*n/18));
    const strokes=Math.floor(diff/n)+(si<=diff%n?1:0);
    return {side:side(x),net:Number(gross)-strokes};
   });
