@@ -691,7 +691,7 @@ const evaluated=await Promise.all(posted.slice(0,40).map(async m=>{
 try{
 if(m.game_type==='tilt'){const tilt=await profileTiltBetting(m,p,kind);return {m,result:tilt?.result??null,tilt,gross:tilt?.gross??null,net:null}}if(m.game_type==='quota'){const quota=await profileQuotaBetting(m,p,kind);return {m,result:quota?.result??null,quota, gross:null,net:null}}
 if(m.game_type==='high_low'){const highLow=await profileHighLowBetting(m,p,kind);return {m,result:highLow?.result??null,highLow,gross:null,net:null}}
-if(m.game_type==='hammer'){const hammer=await profileHammerBetting(m,p,kind);return {m,result:hammer?.result??null,hammer,gross:null,net:null}}
+if(m.game_type==='scotch'){const scotch=await profileScotchBetting(m,p,kind);return {m,result:scotch?.result??null,scotch,gross:null,net:null}}if(m.game_type==='hammer'){const hammer=await profileHammerBetting(m,p,kind);return {m,result:hammer?.result??null,hammer,gross:null,net:null}}
 const [mp,gp,hs,gs,teams]=await Promise.all([
 db.from('match_players').select('player_id,course_handicap').eq('match_id',m.id),
 db.from('guest_players').select('id,directory_entry_id,course_handicap').eq('match_id',m.id),
@@ -741,17 +741,31 @@ return {m,result,gross:ownGross,net,team:roster.length===4};
 }));
 const scored=evaluated.filter(x=>x.result),wins=scored.filter(x=>x.result==='win').length,losses=scored.filter(x=>x.result==='loss').length,ties=scored.filter(x=>x.result==='tie').length;
 const avg=key=>{const a=evaluated.filter(x=>x[key]!=null&&x.m.hole_count===18).map(x=>x[key]);return a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'—'};
-career.innerHTML='<h3>Playing record · 9 &amp; 18 holes</h3><div class="profile-stats-grid">'+[['Played',scored.length],['9-hole',scored.filter(x=>Number(x.m.hole_count)===9).length],['18-hole',scored.filter(x=>Number(x.m.hole_count)===18).length],['Wins',wins],['Losses',losses],['Ties',ties],['Win %',scored.length?Math.round(wins/scored.length*100)+'%':'—'],['Avg Gross',avg('gross')],['Avg Net',avg('net')]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Playing records include completed Nassau, High/Low, Quota and Tilt matches. Quota first-place finishers count as wins; other finishers count as losses. Betting outcomes are calculated separately. Gross and net averages use 18-hole rounds only. '+(posted.length>40?'Only the 40 most recent completed matches were analyzed.':'')+'</p>';
+career.innerHTML='<h3>Playing record · 9 &amp; 18 holes</h3><div class="profile-stats-grid">'+[['Played',scored.length],['9-hole',scored.filter(x=>Number(x.m.hole_count)===9).length],['18-hole',scored.filter(x=>Number(x.m.hole_count)===18).length],['Wins',wins],['Losses',losses],['Ties',ties],['Win %',scored.length?Math.round(wins/scored.length*100)+'%':'—'],['Avg Gross',avg('gross')],['Avg Net',avg('net')]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Playing records include completed Nassau, High/Low, Quota, Tilt and Scotch matches. Quota first-place finishers count as wins; other finishers count as losses. Betting outcomes are calculated separately. Gross and net averages use 18-hole rounds only. '+(posted.length>40?'Only the 40 most recent completed matches were analyzed.':'')+'</p>';
 const displayGameType=value=>value==='hammer'?'Hammer':value==='better_ball'?'Better Ball Match Play':value==='high_low'?'High-Low':String(value||'').replace(/\b[a-z]/g,ch=>ch.toUpperCase());
 const recordTable=(rows,label)=>{if(!rows.length)return '<p class="muted">No completed matches yet.</p>';const head='<div class="profile-record-grid profile-record-head"><span>'+label+'</span><span>W</span><span>L</span><span>T</span><span>Win %</span></div>';return '<div class="profile-record-table">'+head+rows.map(([name,items])=>{const w=items.filter(x=>x.result==='win').length,l=items.filter(x=>x.result==='loss').length,t=items.filter(x=>x.result==='tie').length,pct=items.length?Math.round(w/items.length*100)+'%':'—';return '<div class="profile-record-grid"><span>'+safe(name)+'</span><span>'+w+'</span><span>'+l+'</span><span>'+t+'</span><strong>'+pct+'</strong></div>'}).join('')+'</div>'};
 const grouped=field=>{const out={};for(const item of scored){const key=field==='year'?String(item.m.match_date).slice(0,4):item.m.game_type;(out[key]??=[]).push(item)}return Object.entries(out).sort((a,b)=>b[0].localeCompare(a[0])).map(([key,items])=>[field==='year'?key:displayGameType(key),items])};
 years.innerHTML=recordTable(grouped('year'),'Year')+'<h3>Record by match length</h3>'+recordTable([9,18].map(n=>[n+' holes',scored.filter(x=>Number(x.m.hole_count)===n)]),'Holes');
 games.innerHTML=recordTable(grouped('game'),'Game');
 
-const betting=(await Promise.all(posted.slice(0,40).map(m=>m.game_type==='hammer'?profileHammerBetting(m,p,kind):m.game_type==='tilt'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.tilt??null):m.game_type==='quota'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.quota??null):m.game_type==='high_low'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.highLow??null):profileNassauBetting(m,p,kind)))).filter(x=>x!==null);
+async function profileScotchBetting(m,p,kind){
+ const col=kind==='registered'?'player_id':'guest_id';
+ let id=p.id;
+ if(kind!=='registered'){
+  const {data:g,error:ge}=await db.from('guest_players').select('id').eq('match_id',m.id).eq('directory_entry_id',p.id).maybeSingle();
+  if(ge)throw ge;
+  id=g?.id;
+ }
+ if(!id)return null;
+ const {data,error:e}=await db.from('scotch_match_results').select('net_cents,team_points,opponent_points').eq('match_id',m.id).eq(col,id).maybeSingle();
+ if(e)throw e;
+ if(!data)return null;
+ return {m,amount:Number(data.net_cents)/100,result:data.team_points>data.opponent_points?'win':data.team_points<data.opponent_points?'loss':'tie'};
+}
+const betting=(await Promise.all(posted.slice(0,40).map(m=>m.game_type==='scotch'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.scotch??null):m.game_type==='hammer'?profileHammerBetting(m,p,kind):m.game_type==='tilt'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.tilt??null):m.game_type==='quota'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.quota??null):m.game_type==='high_low'?Promise.resolve(evaluated.find(x=>x.m.id===m.id)?.highLow??null):profileNassauBetting(m,p,kind)))).filter(x=>x!==null);
 const won=betting.reduce((a,x)=>a+Math.max(0,x.amount),0),lost=betting.reduce((a,x)=>a+Math.max(0,-x.amount),0);
 const money=n=>(n>0?'+':n<0?'-':'')+'$'+Math.abs(n).toFixed(2);
-career.innerHTML+='<h3>Betting record</h3><div class="profile-stats-grid">'+[['Won',money(won)],['Lost',money(-lost)],['Net',money(won-lost)]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Completed Nassau, Better Ball, Hammer and High-Low bets, including presses where applicable, Quota payouts net of buy-ins, and Tilt settlements. Team Nassau stakes are per person.</p>'+betting.map(x=>'<div class="profile-record-row"><span>'+safe(x.m.match_date)+' · '+safe(displayGameType(x.m.game_type))+'</span><strong>'+money(x.amount)+'</strong></div>').join('');
+career.innerHTML+='<h3>Betting record</h3><div class="profile-stats-grid">'+[['Won',money(won)],['Lost',money(-lost)],['Net',money(won-lost)]].map(([k,v])=>'<div><small>'+safe(k)+'</small><strong>'+safe(v)+'</strong></div>').join('')+'</div><p class="muted">Completed Nassau, Better Ball, Hammer and High-Low bets, including presses where applicable, Quota payouts net of buy-ins, Tilt and Scotch settlements. Team stakes are per person.</p>'+betting.map(x=>'<div class="profile-record-row"><span>'+safe(x.m.match_date)+' · '+safe(displayGameType(x.m.game_type))+'</span><strong>'+money(x.amount)+'</strong></div>').join('');
 recent.innerHTML=(matches||[]).slice(0,10).map(m=>'<div class="profile-record-row"><span><strong>'+safe(displayGameType(m.game_type))+'</strong><br><small>'+safe(m.match_date)+' · '+safe(m.status)+'</small></span><button class="secondary" type="button" data-profile-match="'+safe(m.id)+'">Scorecard</button></div>').join('');
 recent.querySelectorAll('[data-profile-match]').forEach(b=>b.onclick=()=>openHistoricalScorecard(b.dataset.profileMatch,p,kind));
 }catch(e){career.textContent='Could not load match history: '+(e?.message||String(e))}
@@ -1190,7 +1204,7 @@ function updateScotchPreview(){
  }
  el('bets').innerHTML='<strong>Scotch · Cumulative points</strong><p>Team 1 ('+safe(names[0])+'): '+totals[0]+' · Team 2 ('+safe(names[1])+'): '+totals[1]+'</p><small>Each hole: low net ball 2, low net team total 2, CTP 1, birdie 1. Tied categories earn 0. Sweep multipliers apply.</small>';
  const options=scotchOptions(),settlement=window.TarheelScotch?.settle({teamPoints:totals,bettingMode:options.bettingMode||'fixed',stake:Number(match.stake)||0});
- el('financialSummary').innerHTML='<strong>Projected per-player settlement</strong><p>'+safe(names[0])+': $'+(settlement?.teamAEach||0).toFixed(2)+' each</p><p>'+safe(names[1])+': $'+(settlement?.teamBEach||0).toFixed(2)+' each</p><small>Scotch posting is disabled during testing.</small>';
+ el('financialSummary').innerHTML='<strong>Projected per-player settlement</strong><p>'+safe(names[0])+': $'+(settlement?.teamAEach||0).toFixed(2)+' each</p><p>'+safe(names[1])+': $'+(settlement?.teamBEach||0).toFixed(2)+' each</p><small>Final settlement is recorded when the match is posted.</small>';
  el('presses').textContent='No presses in Scotch.';
 }
 function renderScotch(){
@@ -1351,7 +1365,7 @@ const button=el('finalizeMatch');if(button.disabled)return;
 button.disabled=true;button.textContent='Checking saved scores…';
 try{
 if(!match)throw Error('Open a match first.');
-if(match.game_type==='scotch')throw Error('Scotch final posting is disabled until settlement and player records are verified.');
+
 if(posted())throw Error('This match is already posted.');
 if(savingHoles.size||saveTimers.size)throw Error('Some holes are still saving. Wait for the save confirmation and try again.');
 if(hasUnsavedScores())throw Error('The visible scores have not finished saving. Wait for the save confirmation and try again.');
@@ -1369,7 +1383,7 @@ const incomplete=all.filter(p=>Array.from({length:holes},(_,i)=>i+1).some(h=>!(p
 if(incomplete.length)throw Error('Cannot post yet: '+incomplete.length+' player(s) have missing saved scores. Check both nines if this is an 18-hole match.');
 if(!confirm('Finalize and post this '+holes+'-hole match? All saved scores will become read-only.'))return;
 button.textContent='Posting match…';
-const {data,error:e}=await db.rpc(match.game_type==='hammer'?'finalize_hammer_match':match.game_type==='tilt'?'finalize_tilt_match':'finalize_complete_match',{p_match:id});
+const {data,error:e}=await db.rpc(match.game_type==='scotch'?'finalize_scotch_match':match.game_type==='hammer'?'finalize_hammer_match':match.game_type==='tilt'?'finalize_tilt_match':'finalize_complete_match',{p_match:id});
 if(e)throw e;
 if(data!=='completed')throw Error('The database did not confirm finalization.');
 match.status='completed';await refresh();await loadMatches();msg('Match posted successfully. Player records will include this result when the player profile is opened.');
