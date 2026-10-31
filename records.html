@@ -75,8 +75,8 @@ function recordFor(p,ms){const o={W:0,L:0,T:0,excluded:0};for(const m of ms.filt
 const recordText=r=>r.W+'–'+r.L+'–'+r.T;
 const winPct=r=>r.W+r.L+r.T?((r.W+r.T/2)/(r.W+r.L+r.T)*100).toFixed(1)+'%':'—';
 function renderRecords(a,b,shared){
- const all=eligibleMatches(),ra=recordFor(a,all),rb=recordFor(b,all);const pendingHandicaps=all.filter(m=>missingHandicap(m)).length;
- $('recordComparison').innerHTML='<h3>Match Records (Supported Formats)</h3>'+(pendingHandicaps?'<p class="section-note">'+pendingHandicaps+' Nassau/High-Low matches have zero stored handicaps; reconstructed results use historical handicap indexes and require verification.</p>':'')+'<div class="row">'+[[a,ra],[b,rb]].map(([p,r])=>'<div class="stat"><b>'+esc(p.display_name)+'</b><strong>'+recordText(r)+'</strong><p>'+winPct(r)+' win percentage</p><p class="section-note">'+r.excluded+' match(es) awaiting result calculation</p></div>').join('')+'</div>';
+ const all=shared,ra=recordFor(a,all),rb=recordFor(b,all);const pendingHandicaps=all.filter(m=>missingHandicap(m)).length;
+ $('recordComparison').innerHTML='<h3>Records in Shared Matches</h3><p class="section-note">These records include matches where both players participated, including games as teammates. The competitive record below counts only opponents.</p>'+(pendingHandicaps?'<p class="section-note">'+pendingHandicaps+' Nassau/High-Low matches have zero stored handicaps; reconstructed results use historical handicap indexes and require verification.</p>':'')+'<div class="row">'+[[a,ra],[b,rb]].map(([p,r])=>'<div class="stat"><b>'+esc(p.display_name)+'</b><strong>'+recordText(r)+'</strong><p>'+winPct(r)+' win percentage</p><p class="section-note">'+r.excluded+' match(es) awaiting result calculation</p></div>').join('')+'</div>';
  const opponents=shared.filter(m=>{const ta=teamFor(a,m),tb=teamFor(b,m);if(ta!=null&&tb!=null)return ta!==tb;return !['quota','tilt'].includes(m.game_type)&&!teams.some(t=>t.match_id===m.id)});
  const known=opponents.filter(m=>matchOutcome(a,m)&&matchOutcome(b,m));
  const ar=recordFor(a,known),br=recordFor(b,known);
