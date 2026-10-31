@@ -1,0 +1,4 @@
+-- Nines settlement calculation is deployed in Supabase.
+-- Returns cents for three players in input order.
+-- Winner collects from both others; tied leaders split the payment from the third.
+-- SQL definition to be synchronized with deployed function.
