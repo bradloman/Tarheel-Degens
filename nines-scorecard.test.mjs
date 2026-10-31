@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {ninesScorecard,strokesOnNinesHole} from './nines-scorecard.js';
+assert.equal(strokesOnNinesHole(21,3),2);
+assert.equal(strokesOnNinesHole(21,4),1);
+const players=[{courseHandicap:8},{courseHandicap:13},{courseHandicap:17}];
+const holes=Array.from({length:9},(_,i)=>({number:i+1,strokeIndex:i+1,gross:[4,5,6]}));
+const result=ninesScorecard(players,holes,1,'per_point');
+assert.deepEqual(result.allowances,[0,5,9]);
+assert.deepEqual(result.rows[0].net,[4,4,5]);
+assert.deepEqual(result.rows[0].points,[4,4,1]);
+assert.deepEqual(result.rows[5].net,[4,5,5]);
+assert.deepEqual(result.rows[5].points,[5,2,2]);
+assert.equal(result.totals.reduce((a,b)=>a+b,0),81);
+assert.equal(result.settlement.reduce((a,b)=>a+b,0),0);
+const incomplete=holes.map((h,i)=>i===8?{...h,gross:[4,null,6]}:h);
+assert.equal(ninesScorecard(players,incomplete,1,'fixed').settlement,null);
+console.log('Nines scorecard tests passed');
