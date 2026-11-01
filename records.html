@@ -65,7 +65,13 @@ function renderMilestones(){
  add('Most gross eagles in one match',scoring.filter(x=>x.eagles>0).sort((a,b)=>b.eagles-a.eagles)[0],x=>x.eagles+' eagles');
  const rounds=[];for(const m of ms){if(![9,18].includes(Number(m.hole_count)))continue;for(const p of directory){if(!identityFor(p,m))continue;const keys=playerKeys(p,m);const holes=[...scores.filter(x=>x.match_id===m.id&&keys.includes('p:'+x.player_id)),...guestScores.filter(x=>x.match_id===m.id&&keys.includes('g:'+x.guest_id))];if(holes.length!==Number(m.hole_count)||new Set(holes.map(x=>x.hole_number)).size!==holes.length||holes.some(x=>x.gross_strokes==null||!Number.isFinite(Number(x.gross_strokes))))continue;rounds.push({p,m,total:holes.reduce((n,x)=>n+Number(x.gross_strokes),0)})}}
  for(const n of [9,18])add('Lowest '+n+'-hole gross',rounds.filter(x=>Number(x.m.hole_count)===n).sort((a,b)=>a.total-b.total)[0],x=>x.total+' strokes');
- $('milestoneList').innerHTML=cards.length?cards.map(x=>'<div class="milestone-row"><div><b>'+esc(x.label)+'</b><span>'+esc(x.who)+(x.date?' · '+esc(x.date):'')+'</span></div><div class="milestone-value"><strong>'+esc(x.value)+'</strong></div></div>').join(''):'<p class="muted">No completed records available for these filters.</p>';
+ // No saved per-hole net strokes exist in the current schema. Do not infer them from handicaps.
+ const netMilestones=[
+  ['Lowest 9-hole net score','No verified saved net score'],
+  ['Lowest 18-hole net score','No verified saved net score'],
+  ['Most net birdies or better in a round','No verified saved net hole results']
+ ];
+ $('milestoneList').innerHTML=cards.length?cards.map(x=>'<div class="milestone-row"><div><b>'+esc(x.label)+'</b><span>'+esc(x.who)+(x.date?' · '+esc(x.date):'')+'</span></div><div class="milestone-value"><strong>'+esc(x.value)+'</strong></div></div>').join(''):'<p class="muted">No completed records available for these filters.</p>';\n $('milestoneList').innerHTML+=netMilestones.map(([label,reason])=>'<div class="milestone-row"><div><b>'+esc(label)+'</b><span>Recorded net scores only · no handicap reconstruction</span></div><div class="milestone-value"><strong>—</strong><span>'+esc(reason)+'</span></div></div>').join('');
 }
 function eligibleMatches(){return matches.filter(m=>m.status==='completed'&&($('year').value==='all'||m.match_date.startsWith($('year').value))&&($('format').value==='all'||m.game_type===$('format').value))}
 function belongs(p,r){return !!((p.claimed_by&&r.player_id===p.claimed_by)||(r.directory_entry_id===p.id)||(r.guest_id&&guests.some(g=>g.id===r.guest_id&&(g.directory_entry_id===p.id||(!g.directory_entry_id&&g.display_name?.toLowerCase()===p.display_name.toLowerCase())))))}
