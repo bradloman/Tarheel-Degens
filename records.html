@@ -157,11 +157,11 @@ function renderBirdieEagleLeaders(){
    }
   }
  }
- const defs=[['Gross Birdie Leaders','gb','gh'],['Net Birdie Leaders','nb','nh'],['Gross Eagle Leaders','ge','gh'],['Net Eagle Leaders','ne','nh']];
+ const defs=[['Gross Birdie Leaders','gb','gh'],['Gross Eagle Leaders','ge','gh']];
  $('birdieEagleLeaders').innerHTML=defs.map(([title,k,h])=>{
   const ranked=data.filter(x=>x[h]>0&&x[k]>0).sort((a,b)=>b[k]-a[k]||b[k]/b[h]-a[k]/a[h]||a.p.display_name.localeCompare(b.p.display_name));
   return '<h3>'+title+'</h3>'+topThreeTable(ranked,x=>'<td style="text-align:right"><b>'+x[k]+'</b> <span class="muted">('+x[h]+' holes)</span></td>','No qualifying scores yet.');
- }).join('')+'<p class="muted">Birdies: exactly one under par. Eagles: two or more under par. Net counts use strokes received under each match format. Quota scores count without strokes. Matches with all-zero stored handicaps are excluded from net counts until historical strokes can be verified. Net totals are provisional.</p>';
+ }).join('')+'<p class="muted">Gross birdies: exactly one under par. Gross eagles: two or more under par.</p>';
 }
 function renderFormatLeaders(){
  const ms=eligibleMatches(),types=[...new Set(ms.map(m=>m.game_type))].sort();
