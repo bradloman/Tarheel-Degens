@@ -157,7 +157,7 @@ function renderBirdieEagleLeaders(){
    }
   }
  }
- const defs=[['Gross Birdie Leaders','gb','gh'],['Gross Eagle Leaders','ge','gh']];
+ const defs=[['Birdie Leaders (gross)','gb','gh'],['Eagle Leaders (gross)','ge','gh']];
  $('birdieEagleLeaders').innerHTML=defs.map(([title,k,h])=>{
   const ranked=data.filter(x=>x[h]>0&&x[k]>0).sort((a,b)=>b[k]-a[k]||b[k]/b[h]-a[k]/a[h]||a.p.display_name.localeCompare(b.p.display_name));
   return '<h3>'+title+'</h3>'+topThreeTable(ranked,x=>'<td style="text-align:right"><b>'+x[k]+'</b> <span class="muted">('+x[h]+' holes)</span></td>','No qualifying scores yet.');
