@@ -65,14 +65,34 @@ function renderMilestones(){
  add('Most gross eagles in one match',scoring.filter(x=>x.eagles>0).sort((a,b)=>b.eagles-a.eagles)[0],x=>x.eagles+' eagles');
  const rounds=[];for(const m of ms){if(![9,18].includes(Number(m.hole_count)))continue;for(const p of directory){if(!identityFor(p,m))continue;const keys=playerKeys(p,m);const holes=[...scores.filter(x=>x.match_id===m.id&&keys.includes('p:'+x.player_id)),...guestScores.filter(x=>x.match_id===m.id&&keys.includes('g:'+x.guest_id))];if(holes.length!==Number(m.hole_count)||new Set(holes.map(x=>x.hole_number)).size!==holes.length||holes.some(x=>x.gross_strokes==null||!Number.isFinite(Number(x.gross_strokes))))continue;rounds.push({p,m,total:holes.reduce((n,x)=>n+Number(x.gross_strokes),0)})}}
  for(const n of [9,18])add('Lowest '+n+'-hole gross',rounds.filter(x=>Number(x.m.hole_count)===n).sort((a,b)=>a.total-b.total)[0],x=>x.total+' strokes');
- // No saved per-hole net strokes exist in the current schema. Do not infer them from handicaps.
- const netMilestones=[
-  ['Lowest 9-hole net score','No verified saved net score'],
-  ['Lowest 18-hole net score','No verified saved net score'],
-  ['Most net birdies or better in a round','No verified saved net hole results']
- ];
+ const netRounds=[];
+ for(const m of ms){
+  if(m.game_type==='quota'||![9,18].includes(Number(m.hole_count)))continue;
+  const roster=[...members.filter(x=>x.match_id===m.id).map(x=>({key:'p:'+x.player_id,ch:x.course_handicap})),...guests.filter(x=>x.match_id===m.id).map(x=>({key:'g:'+x.id,ch:x.course_handicap}))];
+  if(!roster.length||roster.some(x=>x.ch==null||!Number.isFinite(Number(x.ch)))||roster.every(x=>Number(x.ch)===0))continue;
+  const relative=['nassau','high_low','hammer','better_ball','scotch','nines'].includes(m.game_type);
+  const low=Math.min(...roster.map(x=>Number(x.ch)));
+  const parByHole=new Map(historicalHoles.filter(x=>x.tee_id===m.tee_id).map(x=>[Number(x.hole_number),{par:Number(x.par),idx:Number(x.stroke_index)}]));
+  const override=new Map(strokeIndexes.filter(x=>x.match_id===m.id).map(x=>[Number(x.hole_number),Number(x.stroke_index)]));
+  for(const p of directory){
+   const keys=playerKeys(p,m),entry=roster.find(x=>keys.includes(x.key));if(!entry)continue;
+   const ss=entry.key.startsWith('p:')?scores.filter(x=>x.match_id===m.id&&'p:'+x.player_id===entry.key):guestScores.filter(x=>x.match_id===m.id&&'g:'+x.guest_id===entry.key);
+   if(ss.length!==Number(m.hole_count)||new Set(ss.map(x=>Number(x.hole_number))).size!==ss.length)continue;
+   const ch=relative?Number(entry.ch)-low:Number(entry.ch);
+   let total=0,birdies=0,valid=true;
+   for(const x of ss){
+    const h=parByHole.get(Number(x.hole_number)),idx=override.get(Number(x.hole_number))??h?.idx,gross=Number(x.gross_strokes);
+    if(!h||!Number.isInteger(idx)||idx<1||idx>18||!Number.isFinite(h.par)||x.gross_strokes==null||!Number.isInteger(gross)||gross<1){valid=false;break}
+    const strokes=ch>=0?Math.floor(ch/18)+(idx<=ch%18?1:0):-Math.floor(-ch/18)-(idx>18-((-ch)%18)?1:0);
+    const net=gross-strokes;total+=net;if(net<h.par)birdies++;
+   }
+   if(valid)netRounds.push({p,m,total,birdies});
+  }
+ }
+ for(const n of [9,18])add('Lowest '+n+'-hole net score',netRounds.filter(x=>Number(x.m.hole_count)===n).sort((a,b)=>a.total-b.total)[0],x=>x.total+' strokes');
+ add('Most net birdies or better in a round',netRounds.filter(x=>x.birdies>0).sort((a,b)=>b.birdies-a.birdies)[0],x=>x.birdies+' holes');
  $('milestoneList').innerHTML=cards.length?cards.map(x=>'<div class="milestone-row"><div><b>'+esc(x.label)+'</b><span>'+esc(x.who)+(x.date?' · '+esc(x.date):'')+'</span></div><div class="milestone-value"><strong>'+esc(x.value)+'</strong></div></div>').join(''):'<p class="muted">No completed records available for these filters.</p>';
- $('milestoneList').innerHTML+=netMilestones.map(([label,reason])=>'<div class="milestone-row"><div><b>'+esc(label)+'</b><span>Recorded net scores only · no handicap reconstruction</span></div><div class="milestone-value"><strong>—</strong><span>'+esc(reason)+'</span></div></div>').join('');
+
 }
 function eligibleMatches(){return matches.filter(m=>m.status==='completed'&&($('year').value==='all'||m.match_date.startsWith($('year').value))&&($('format').value==='all'||m.game_type===$('format').value))}
 function belongs(p,r){return !!((p.claimed_by&&r.player_id===p.claimed_by)||(r.directory_entry_id===p.id)||(r.guest_id&&guests.some(g=>g.id===r.guest_id&&(g.directory_entry_id===p.id||(!g.directory_entry_id&&g.display_name?.toLowerCase()===p.display_name.toLowerCase())))))}
