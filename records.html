@@ -141,6 +141,7 @@ function renderBirdieEagleLeaders(){
   const low=Math.min(...entries.map(x=>Number(x.ch)).filter(Number.isFinite));
   const relative=['nassau','high_low','hammer','better_ball','scotch','nines'].includes(m.game_type);
   const grossOnly=m.game_type==='quota';
+  const missingHandicaps=!grossOnly&&entries.length>1&&entries.every(x=>Number(x.ch)===0);
   for(const d of data){
    const keys=playerKeys(d.p,m),e=entries.find(x=>keys.includes(x.key));if(!e)continue;
    const ss=e.key.startsWith('p:')?scores.filter(x=>x.match_id===m.id&&'p:'+x.player_id===e.key):guestScores.filter(x=>x.match_id===m.id&&'g:'+x.guest_id===e.key);
@@ -148,19 +149,19 @@ function renderBirdieEagleLeaders(){
     const h=holes.get(Number(x.hole_number)),gross=Number(x.gross_strokes);
     if(!h||x.gross_strokes==null||!Number.isFinite(gross)||gross<=0||!Number.isFinite(Number(h.par)))continue;
     const diff=gross-Number(h.par);d.gh++;if(diff===-1)d.gb++;else if(diff<=-2)d.ge++;
-    if(grossOnly||e.ch==null||!Number.isFinite(Number(e.ch)))continue;
+    if(missingHandicaps||e.ch==null||!Number.isFinite(Number(e.ch)))continue;
     const idx=Number(strokeIndexes.find(t=>t.match_id===m.id&&Number(t.hole_number)===Number(x.hole_number))?.stroke_index??h.stroke_index);
     if(!Number.isInteger(idx)||idx<1||idx>18)continue;
-    const ch=relative?Number(e.ch)-low:Number(e.ch),strokes=ch>=0?Math.floor(ch/18)+(idx<=ch%18?1:0):-Math.floor(-ch/18)-(idx>18-((-ch)%18)?1:0);
+    const ch=grossOnly?0:relative?Number(e.ch)-low:Number(e.ch),strokes=ch>=0?Math.floor(ch/18)+(idx<=ch%18?1:0):-Math.floor(-ch/18)-(idx>18-((-ch)%18)?1:0);
     const net=gross-strokes-Number(h.par);d.nh++;if(net===-1)d.nb++;else if(net<=-2)d.ne++;
    }
   }
  }
  const defs=[['Gross Birdie Leaders','gb','gh'],['Net Birdie Leaders','nb','nh'],['Gross Eagle Leaders','ge','gh'],['Net Eagle Leaders','ne','nh']];
  $('birdieEagleLeaders').innerHTML=defs.map(([title,k,h])=>{
-  const ranked=data.filter(x=>x[h]>0).sort((a,b)=>b[k]-a[k]||b[k]/b[h]-a[k]/a[h]||a.p.display_name.localeCompare(b.p.display_name));
+  const ranked=data.filter(x=>x[h]>0&&x[k]>0).sort((a,b)=>b[k]-a[k]||b[k]/b[h]-a[k]/a[h]||a.p.display_name.localeCompare(b.p.display_name));
   return '<h3>'+title+'</h3>'+topThreeTable(ranked,x=>'<td style="text-align:right"><b>'+x[k]+'</b> <span class="muted">('+x[h]+' holes)</span></td>','No qualifying scores yet.');
- }).join('')+'<p class="muted">Birdies: exactly one under par. Eagles: two or more under par. Net counts use the strokes received under each match format: strokes off the lowest course handicap in relative-handicap games, and full course-handicap strokes in individual net games. Quota is gross-only.</p>';
+ }).join('')+'<p class="muted">Birdies: exactly one under par. Eagles: two or more under par. Net counts use strokes received under each match format. Quota scores count without strokes. Matches with all-zero stored handicaps are excluded from net counts until historical strokes can be verified. Net totals are provisional.</p>';
 }
 function renderFormatLeaders(){
  const ms=eligibleMatches(),types=[...new Set(ms.map(m=>m.game_type))].sort();
