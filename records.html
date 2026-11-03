@@ -59,6 +59,29 @@ function renderMilestones(){
  const scoring=[];for(const m of ms){const pars=new Map(historicalHoles.filter(h=>h.tee_id===m.tee_id).map(h=>[Number(h.hole_number),Number(h.par)]));if(!pars.size)continue;for(const p of directory){const keys=playerKeys(p,m);if(!keys.length)continue;const ss=[...scores.filter(x=>x.match_id===m.id&&keys.includes('p:'+x.player_id)),...guestScores.filter(x=>x.match_id===m.id&&keys.includes('g:'+x.guest_id))];let birdies=0,eagles=0;for(const x of ss){const par=pars.get(Number(x.hole_number)),gross=Number(x.gross_strokes);if(!Number.isFinite(par)||x.gross_strokes==null||!Number.isFinite(gross)||gross<=0)continue;if(gross===par-1)birdies++;else if(gross<=par-2)eagles++;}if(birdies||eagles)scoring.push({p,m,birdies,eagles});}}
  add('Most gross birdies (round)',scoring.filter(x=>x.birdies>0).sort((a,b)=>b.birdies-a.birdies)[0],x=>x.birdies+' '+(x.birdies===1?'birdie':'birdies'));
  add('Most gross eagles (round)',scoring.filter(x=>x.eagles>0).sort((a,b)=>b.eagles-a.eagles)[0],x=>x.eagles+' '+(x.eagles===1?'eagle':'eagles'));
+ const holeStreaks=[];
+ for(const m of ms){
+  if(![9,18].includes(Number(m.hole_count)))continue;
+  const pars=new Map(historicalHoles.filter(h=>h.tee_id===m.tee_id).map(h=>[Number(h.hole_number),Number(h.par)]));
+  for(const p of directory){
+   const keys=playerKeys(p,m);if(!keys.length)continue;
+   const ss=[...scores.filter(x=>x.match_id===m.id&&keys.includes('p:'+x.player_id)),...guestScores.filter(x=>x.match_id===m.id&&keys.includes('g:'+x.guest_id))].sort((a,b)=>Number(a.hole_number)-Number(b.hole_number));
+   if(ss.length!==Number(m.hole_count)||new Set(ss.map(x=>Number(x.hole_number))).size!==ss.length)continue;
+   let birdieRun=0,parRun=0,bestBirdie=0,bestPar=0,previous=null;
+   for(const x of ss){
+    const hole=Number(x.hole_number),par=pars.get(hole),gross=Number(x.gross_strokes);
+    if(previous!==null&&hole!==previous+1){birdieRun=0;parRun=0}
+    if(!Number.isFinite(par)||x.gross_strokes==null||!Number.isInteger(gross)||gross<1){birdieRun=0;parRun=0;previous=hole;continue}
+    birdieRun=gross<par?birdieRun+1:0;
+    parRun=gross===par?parRun+1:0;
+    bestBirdie=Math.max(bestBirdie,birdieRun);bestPar=Math.max(bestPar,parRun);
+    previous=hole;
+   }
+   if(bestBirdie||bestPar)holeStreaks.push({p,m,bestBirdie,bestPar});
+  }
+ }
+ add('Longest birdie streak',holeStreaks.filter(x=>x.bestBirdie>0).sort((a,b)=>b.bestBirdie-a.bestBirdie)[0],x=>x.bestBirdie+' '+(x.bestBirdie===1?'hole':'holes'));
+ add('Longest par streak',holeStreaks.filter(x=>x.bestPar>0).sort((a,b)=>b.bestPar-a.bestPar)[0],x=>x.bestPar+' '+(x.bestPar===1?'hole':'holes'));
  const rounds=[];for(const m of ms){if(![9,18].includes(Number(m.hole_count)))continue;for(const p of directory){if(!identityFor(p,m))continue;const keys=playerKeys(p,m);const holes=[...scores.filter(x=>x.match_id===m.id&&keys.includes('p:'+x.player_id)),...guestScores.filter(x=>x.match_id===m.id&&keys.includes('g:'+x.guest_id))];if(holes.length!==Number(m.hole_count)||new Set(holes.map(x=>x.hole_number)).size!==holes.length||holes.some(x=>x.gross_strokes==null||!Number.isFinite(Number(x.gross_strokes))))continue;rounds.push({p,m,total:holes.reduce((n,x)=>n+Number(x.gross_strokes),0)})}}
  for(const n of [9,18])add('Lowest '+n+'-hole gross score',rounds.filter(x=>Number(x.m.hole_count)===n).sort((a,b)=>a.total-b.total)[0],x=>x.total+' strokes');
  const netRounds=[];
@@ -90,7 +113,7 @@ function renderMilestones(){
  const sections=[
   {title:'18-Hole Records',items:[['Lowest 18-hole gross score','Lowest Gross'],['Lowest 18-hole net score','Lowest Net']]},
   {title:'9-Hole Records',items:[['Lowest 9-hole gross score','Lowest Gross'],['Lowest 9-hole net score','Lowest Net']]},
-  {title:'Round Achievements',items:[['Most gross birdies (round)','Most Gross Birdies'],['Most gross eagles (round)','Most Gross Eagles'],['Most net birdies or better (round)','Most Net Birdies or Better']]},
+  {title:'Round Achievements',items:[['Most gross birdies (round)','Most Gross Birdies'],['Most gross eagles (round)','Most Gross Eagles'],['Most net birdies or better (round)','Most Net Birdies or Better'],['Longest birdie streak','Longest Birdie Streak'],['Longest par streak','Longest Par Streak']]},
   {title:'Match Records',items:[['Longest winning streak','Longest Winning Streak'],['Most match wins','Most Match Wins'],['Most profitable player','Most Profitable Player'],['Biggest single-match win','Biggest Match Win'],['Biggest single-match loss','Biggest Match Loss']]}
  ];
  const recordRow=(x,label)=>'<div class="milestone-row"><div><b>'+esc(label)+'</b><span>'+esc(x.who)+(x.date?' · '+esc(x.date):'')+'</span></div><div class="milestone-value"><strong>'+esc(x.value)+'</strong></div></div>';
