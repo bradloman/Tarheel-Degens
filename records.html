@@ -55,12 +55,12 @@ function renderMilestones(){
  add('Most profitable player',standings.filter(x=>x.cents>0).sort((a,b)=>b.cents-a.cents)[0],x=>'+'+dollars(x.cents/100));
 
  const streaks=directory.map(p=>{const ordered=ms.filter(m=>identityFor(p,m)).sort((a,b)=>a.match_date.localeCompare(b.match_date)||a.id.localeCompare(b.id));let run=0,best=0,bestMatch=null;for(const m of ordered){const outcome=matchOutcome(p,m);if(outcome==='W'){run++;if(run>best){best=run;bestMatch=m}}else if(outcome==='L')run=0;}return {p,count:best,m:bestMatch}}).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
- add('Longest winning streak',streaks[0],x=>x.count+' straight wins');
+ add('Longest winning streak',streaks[0],x=>x.count+' wins');
  const scoring=[];for(const m of ms){const pars=new Map(historicalHoles.filter(h=>h.tee_id===m.tee_id).map(h=>[Number(h.hole_number),Number(h.par)]));if(!pars.size)continue;for(const p of directory){const keys=playerKeys(p,m);if(!keys.length)continue;const ss=[...scores.filter(x=>x.match_id===m.id&&keys.includes('p:'+x.player_id)),...guestScores.filter(x=>x.match_id===m.id&&keys.includes('g:'+x.guest_id))];let birdies=0,eagles=0;for(const x of ss){const par=pars.get(Number(x.hole_number)),gross=Number(x.gross_strokes);if(!Number.isFinite(par)||x.gross_strokes==null||!Number.isFinite(gross)||gross<=0)continue;if(gross===par-1)birdies++;else if(gross<=par-2)eagles++;}if(birdies||eagles)scoring.push({p,m,birdies,eagles});}}
- add('Most gross birdies in one match',scoring.filter(x=>x.birdies>0).sort((a,b)=>b.birdies-a.birdies)[0],x=>x.birdies+' birdies');
- add('Most gross eagles in one match',scoring.filter(x=>x.eagles>0).sort((a,b)=>b.eagles-a.eagles)[0],x=>x.eagles+' eagles');
+ add('Most gross birdies (round)',scoring.filter(x=>x.birdies>0).sort((a,b)=>b.birdies-a.birdies)[0],x=>x.birdies+' '+(x.birdies===1?'birdie':'birdies'));
+ add('Most gross eagles (round)',scoring.filter(x=>x.eagles>0).sort((a,b)=>b.eagles-a.eagles)[0],x=>x.eagles+' '+(x.eagles===1?'eagle':'eagles'));
  const rounds=[];for(const m of ms){if(![9,18].includes(Number(m.hole_count)))continue;for(const p of directory){if(!identityFor(p,m))continue;const keys=playerKeys(p,m);const holes=[...scores.filter(x=>x.match_id===m.id&&keys.includes('p:'+x.player_id)),...guestScores.filter(x=>x.match_id===m.id&&keys.includes('g:'+x.guest_id))];if(holes.length!==Number(m.hole_count)||new Set(holes.map(x=>x.hole_number)).size!==holes.length||holes.some(x=>x.gross_strokes==null||!Number.isFinite(Number(x.gross_strokes))))continue;rounds.push({p,m,total:holes.reduce((n,x)=>n+Number(x.gross_strokes),0)})}}
- for(const n of [9,18])add('Lowest '+n+'-hole gross',rounds.filter(x=>Number(x.m.hole_count)===n).sort((a,b)=>a.total-b.total)[0],x=>x.total+' strokes');
+ for(const n of [9,18])add('Lowest '+n+'-hole gross score',rounds.filter(x=>Number(x.m.hole_count)===n).sort((a,b)=>a.total-b.total)[0],x=>x.total+' strokes');
  const netRounds=[];
  for(const m of ms){
   if(m.game_type==='quota'||![9,18].includes(Number(m.hole_count)))continue;
@@ -85,8 +85,8 @@ function renderMilestones(){
    if(valid)netRounds.push({p,m,total,birdies});
   }
  }
- for(const n of [9,18])add('Lowest '+n+'-hole net score',netRounds.filter(x=>Number(x.m.hole_count)===n).sort((a,b)=>a.total-b.total)[0],x=>x.total+' strokes');
- add('Most net birdies or better in a round',netRounds.filter(x=>x.birdies>0).sort((a,b)=>b.birdies-a.birdies)[0],x=>x.birdies+' holes');
+ for(const n of [9,18]){const best=netRounds.filter(x=>Number(x.m.hole_count)===n).sort((a,b)=>a.total-b.total)[0];if(best)add('Lowest '+n+'-hole net score',best,x=>x.total+' strokes');else cards.push({label:'Lowest '+n+'-hole net score',who:'No verified net score yet',value:'—',date:''});}
+ add('Most net birdies or better (round)',netRounds.filter(x=>x.birdies>0).sort((a,b)=>b.birdies-a.birdies)[0],x=>x.birdies+' holes');
  $('milestoneList').innerHTML=cards.length?cards.map(x=>'<div class="milestone-row"><div><b>'+esc(x.label)+'</b><span>'+esc(x.who)+(x.date?' · '+esc(x.date):'')+'</span></div><div class="milestone-value"><strong>'+esc(x.value)+'</strong></div></div>').join(''):'<p class="muted">No completed records available for these filters.</p>';
 
 }
