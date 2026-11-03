@@ -53,11 +53,7 @@ function renderMilestones(){
  const standings=directory.map(p=>{const games=ms.filter(m=>identityFor(p,m));const r=recordFor(p,games);const cents=financial.filter(x=>x.p.id===p.id).reduce((n,x)=>n+x.cents,0);return {p,r,cents,games:games.length}});
  add('Most match wins',standings.filter(x=>x.r.W>0).sort((a,b)=>b.r.W-a.r.W)[0],x=>x.r.W+' wins');
  add('Most profitable player',standings.filter(x=>x.cents>0).sort((a,b)=>b.cents-a.cents)[0],x=>'+'+dollars(x.cents/100));
- add('Most completed matches',standings.filter(x=>x.games>0).sort((a,b)=>b.games-a.games)[0],x=>x.games+' matches');
- for(const game of ['tilt','quota','hammer','nassau','high_low','scotch']){
-  const wins=directory.map(p=>({p,count:ms.filter(m=>m.game_type===game&&identityFor(p,m)&&matchOutcome(p,m)==='W').length})).sort((a,b)=>b.count-a.count);
-  add('Most '+(game==='high_low'?'High-Low':labelGame(game))+' wins',wins[0]?.count?wins[0]:null,x=>x.count+' wins');
- }
+
  const streaks=directory.map(p=>{const ordered=ms.filter(m=>identityFor(p,m)).sort((a,b)=>a.match_date.localeCompare(b.match_date)||a.id.localeCompare(b.id));let run=0,best=0,bestMatch=null;for(const m of ordered){const outcome=matchOutcome(p,m);if(outcome==='W'){run++;if(run>best){best=run;bestMatch=m}}else if(outcome==='L')run=0;}return {p,count:best,m:bestMatch}}).filter(x=>x.count>0).sort((a,b)=>b.count-a.count);
  add('Longest winning streak',streaks[0],x=>x.count+' straight wins');
  const scoring=[];for(const m of ms){const pars=new Map(historicalHoles.filter(h=>h.tee_id===m.tee_id).map(h=>[Number(h.hole_number),Number(h.par)]));if(!pars.size)continue;for(const p of directory){const keys=playerKeys(p,m);if(!keys.length)continue;const ss=[...scores.filter(x=>x.match_id===m.id&&keys.includes('p:'+x.player_id)),...guestScores.filter(x=>x.match_id===m.id&&keys.includes('g:'+x.guest_id))];let birdies=0,eagles=0;for(const x of ss){const par=pars.get(Number(x.hole_number)),gross=Number(x.gross_strokes);if(!Number.isFinite(par)||x.gross_strokes==null||!Number.isFinite(gross)||gross<=0)continue;if(gross===par-1)birdies++;else if(gross<=par-2)eagles++;}if(birdies||eagles)scoring.push({p,m,birdies,eagles});}}
