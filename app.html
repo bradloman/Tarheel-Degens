@@ -477,11 +477,26 @@ el('recordsTab').onclick=()=>{window.location.href='records.html'};el('setupTab'
  const select=el('activeMatchSelect'),status=el('activeMatchSwitcherStatus');
  const {data,error:e}=await db.from('matches').select('id,match_date,game_type,status').eq('status','active').order('match_date',{ascending:false}).limit(100);
  if(e){status.textContent='Could not load active matches: '+e.message;return [];}
- const rows=data||[];
- select.innerHTML=rows.length?rows.map(m=>'<option value="'+safe(m.id)+'">'+safe(m.match_date)+' · '+safe(({high_low:'High-Low',better_ball:'Better Ball',nassau:'Nassau',quota:'Quota',tilt:'Tilt',hammer:'Hammer',scotch:'Scotch',nines:'Nines'})[m.game_type]||m.game_type)+'</option>').join(''):'<option value="">No active matches</option>';
+ const rows=data||[],ids=rows.map(m=>m.id),namesByMatch=new Map(ids.map(id=>[id,[]]));
+ if(ids.length){
+  const [registered,guests]=await Promise.all([
+   db.from('match_players').select('match_id,players(display_name)').in('match_id',ids),
+   db.from('guest_players').select('match_id,display_name').in('match_id',ids)
+  ]);
+  if(registered.error||guests.error)status.textContent='Some player names could not be loaded.';
+  for(const p of registered.data||[])if(namesByMatch.has(p.match_id)&&p.players?.display_name)namesByMatch.get(p.match_id).push(p.players.display_name);
+  for(const p of guests.data||[])if(namesByMatch.has(p.match_id)&&p.display_name)namesByMatch.get(p.match_id).push(p.display_name);
+ }
+ const initials=name=>String(name||'').trim().split(/\s+/).filter(Boolean).map(part=>part[0].toUpperCase()).join('').slice(0,3);
+ const types={high_low:'High-Low',better_ball:'Better Ball',nassau:'Nassau',quota:'Quota',tilt:'Tilt',hammer:'Hammer',scotch:'Scotch',nines:'Nines'};
+ select.innerHTML=rows.length?rows.map(m=>{
+  const names=(namesByMatch.get(m.id)||[]).sort((a,b)=>a.localeCompare(b));
+  const players=names.length?names.map(initials).join(' / '):'Players pending';
+  return '<option value="'+safe(m.id)+'">'+safe(players+' · '+(types[m.game_type]||m.game_type)+' · '+m.match_date)+'</option>';
+ }).join(''):'<option value="">No active matches</option>';
  select.disabled=!rows.length;
  if(rows.some(m=>m.id===match?.id))select.value=match.id;
- status.textContent=rows.length===1?'1 active match':rows.length+' active matches';
+ if(!status.textContent.includes('could not be loaded'))status.textContent=rows.length===1?'1 active match':rows.length+' active matches';
  return rows;
 }
 el('activeMatchSelect').onchange=async()=>{const id=el('activeMatchSelect').value;if(id&&id!==match?.id)await openMatch(id)};
