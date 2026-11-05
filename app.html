@@ -473,7 +473,7 @@ const error=e=>msg(e?.message||String(e),true);
 const formatHandicapIndex=value=>value==null||value===''||!Number.isFinite(Number(value))?'—':Number(value).toFixed(1);
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function showMatchPage(page){if(page==='score'&&!match){el('live').classList.add('hidden')}for(const [name,id] of [['setup','setupPage'],['score','scorePage'],['players','playersPage'],['history','historyPage']])el(id).classList.toggle('hidden',name!==page);for(const [name,id] of [['setup','setupTab'],['score','scoreTab'],['players','playersTab']])el(id).setAttribute('aria-selected',String(name===page));if(page==='players'&&page!==historicalReturnPage){loadPlayerDirectory();loadUnclaimedPlayers();el('playerDirectory').closest('.card').classList.remove('hidden');el('playerDetail').classList.add('hidden')}}
-el('recordsTab').onclick=()=>{window.location.href='records.html'};el('setupTab').onclick=()=>{leaveHistoricalView();showMatchPage('setup')};async function refreshActiveMatchSwitcher(){
+el('recordsTab').onclick=()=>{window.location.href='records.html'};el('setupTab').onclick=async()=>{leaveHistoricalView();showMatchPage('setup');try{await loadMatches()}catch(e){error(e)}};async function refreshActiveMatchSwitcher(){
  const select=el('activeMatchSelect'),status=el('activeMatchSwitcherStatus');
  const {data,error:e}=await db.from('matches').select('id,match_date,game_type,status').eq('status','active').order('match_date',{ascending:false}).limit(100);
  if(e){status.textContent='Could not load active matches: '+e.message;return [];}
