@@ -493,6 +493,12 @@ header.td-masthead .brand-copy{flex:0 1 auto!important;min-width:0!important}
 header.td-masthead .brand-mark{width:clamp(70px,11vw,125px)!important;height:clamp(65px,9vw,105px)!important;border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;flex:0 0 auto!important}
 header.td-masthead .brand-mark svg{display:block;width:100%!important;height:100%!important}
 @media(max-width:700px){header.td-masthead{gap:6px!important;padding:10px 8px!important}header.td-masthead .td-ram img{max-height:85px!important;width:auto!important}header.td-masthead h1{font-size:clamp(19px,5.2vw,32px)!important}header.td-masthead .brand-mark{width:65px!important;height:65px!important}}
+
+/* Fix inherited navy ellipse fills: preserve the actual green and white cup. */
+header.td-masthead .brand-mark svg ellipse:first-child{fill:#65b833!important;stroke:#10345c!important}
+header.td-masthead .brand-mark svg ellipse:nth-child(2){fill:#ffffff!important;stroke:#10345c!important}
+header.td-masthead .brand-mark svg circle{fill:#ffffff!important}
+header.td-masthead .brand-mark svg g circle{fill:#8297ab!important}
 </style>
 <script defer src="./scotch.js"></script></head><body><header class="td-masthead"><div class="td-ram" aria-label="Rameses golfing mascot"><img src="./assets/rameses-header.svg" alt="Rameses swinging a golf club" width="100" height="164"></div><div class="brand-copy"><h1>Tarheel Degens</h1></div><div class="brand-mark" aria-label="Putting green with white cup, navy flag, and golf ball"><svg viewBox="0 0 120 100" role="img" aria-label="Green with navy flag and golf ball"><ellipse cx="60" cy="76" rx="54" ry="19" fill="#62aa36" stroke="#10345c" stroke-width="4"/><ellipse cx="57" cy="76" rx="12" ry="4.7" fill="#fff" stroke="#10345c" stroke-width="2"/><path d="M57 14V76" stroke="#10345c" stroke-width="3.5" stroke-linecap="round"/><path d="M59 16Q77 10 94 22Q78 34 59 28Z" fill="#10345c"/><circle cx="88" cy="75" r="9" fill="#fff" stroke="#10345c" stroke-width="2"/><g fill="#8a9aaa"><circle cx="85" cy="72" r="1"/><circle cx="90" cy="72" r="1"/><circle cx="85" cy="77" r="1"/><circle cx="90" cy="77" r="1"/></g></svg></div></header><main>
 <div id="message" class="status">Loading…</div>
