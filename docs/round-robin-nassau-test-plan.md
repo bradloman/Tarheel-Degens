@@ -20,3 +20,11 @@ Status: NOT RUN. Production database unchanged.
 - INVESTIGATE: zero main rows in legacy nassau_bets; determine the active Nassau representation before generating bet rows.
 - NOT TESTED: transactional creation, RLS writes, scoring, presses, settlements.
 - Decision: do not deploy or enable creation RPC yet. First redesign parent-child participant mapping for directory entries/guest players, then test on staging.
+
+## Directory roster preflight (2026-11-06)
+- PASS: three claimed directory entries available.
+- PASS: eight unclaimed directory entries available.
+- PASS: mixed group selection is feasible.
+- BLOCKED: creation RPC is not installed in production; transactional creation cannot be exercised safely without staging.
+- NOT TESTED: database inserts, RLS, shared score reads, handicap strokes, settlements, and records.
+- Reminder: existing score/settlement code may treat claimed directory entries as guest players; ensure canonical identity resolution before enabling.
