@@ -563,6 +563,21 @@ header.td-masthead .brand-mark img{display:block!important;width:100%!important;
  header.td-masthead .td-ram{width:39px!important}
  header.td-masthead .brand-mark{width:42px!important;height:42px!important}
 }
+
+/* Final proportional scale-up of the centered masthead group. */
+@media(min-width:701px){
+ header.td-masthead .td-ram{width:clamp(72px,11vw,138px)!important}
+ header.td-masthead .brand-mark{width:clamp(78px,12vw,150px)!important;height:clamp(78px,12vw,150px)!important}
+ header.td-masthead h1{font-size:clamp(27px,4.95vw,56px)!important}
+}
+@media(min-width:381px) and (max-width:700px){
+ header.td-masthead .td-ram{width:clamp(46px,12vw,73px)!important}
+ header.td-masthead .brand-mark{width:clamp(48px,13vw,79px)!important;height:clamp(48px,13vw,79px)!important}
+ header.td-masthead h1{font-size:clamp(21px,5.7vw,37px)!important;letter-spacing:-.025em!important}
+}
+@media(max-width:380px){
+ header.td-masthead h1{font-size:clamp(18px,5.4vw,21px)!important}
+}
 </style>
 <script defer src="./scotch.js"></script></head><body><header class="td-masthead"><div class="td-ram" aria-label="Rameses golfing mascot"><img src="./assets/rameses-header.svg" alt="Rameses swinging a golf club" width="100" height="164"></div><div class="brand-copy"><h1>Tarheel Degens</h1></div><div class="brand-mark" aria-label="Tarheel Degens golf logo"><img src="tarheel_degens_clean_transparent_logo.png" alt="Tarheel Degens TD flag, putting green and golf ball" style="display:block;width:100%;height:100%;object-fit:contain" /></div></div></header><main>
 <div id="message" class="status">Loading…</div>
