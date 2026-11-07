@@ -40,32 +40,5 @@ using (
 -- Pair inserts/deletes intentionally have no client-facing policies.
 -- An authenticated, authorization-checking creation RPC will write the pairs atomically.
 
--- The creator inserts the three pairing links within the same transaction.
-create policy "round robin pair owner insert" on public.round_robin_nassau_pairs
-for insert to authenticated
-with check (
-  exists (
-    select 1 from public.matches m
-    where m.id=parent_match_id
-      and m.game_type='round_robin_nassau'
-      and m.created_by=(select auth.uid())
-  )
-  and exists (
-    select 1 from public.matches child
-    where child.id=child_match_id
-      and child.game_type='nassau'
-      and child.created_by=(select auth.uid())
-  )
-  and exists (select 1 from public.match_players mp
-              where mp.match_id=parent_match_id and mp.player_id=player_a_id)
-  and exists (select 1 from public.match_players mp
-              where mp.match_id=parent_match_id and mp.player_id=player_b_id)
-  and exists (select 1 from public.match_players mp
-              where mp.match_id=child_match_id and mp.player_id=player_a_id)
-  and exists (select 1 from public.match_players mp
-              where mp.match_id=child_match_id and mp.player_id=player_b_id)
-);
--- Important: the client still must not directly insert pair links.
--- To enforce this, production needs an authorization-checking RPC with
--- tightly scoped privileges rather than granting INSERT on the pairing table.
--- This draft policy is for testing the transaction under authenticated RLS.
+-- Pairing writes are RPC-only. No INSERT/UPDATE/DELETE policy is granted.
+revoke insert, update, delete on public.round_robin_nassau_pairs from anon, authenticated;
