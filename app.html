@@ -485,6 +485,24 @@ header.td-masthead .brand-mark{width:73px!important;height:73px!important;justif
 header.td-masthead .brand-mark svg{width:72px!important;height:72px!important}
 @media(max-width:700px){header.td-masthead{grid-template-columns:49px minmax(0,1fr) 49px!important;column-gap:2px!important;min-height:82px!important;padding:7px 8px!important}header.td-masthead .td-ram{width:47px!important;height:67px!important;justify-self:end!important}header.td-masthead .brand-mark{width:49px!important;height:49px!important;justify-self:start!important}header.td-masthead .brand-mark svg{width:49px!important;height:49px!important}header.td-masthead h1{font-size:clamp(20px,5.3vw,34px)!important}}
 @media(max-width:380px){header.td-masthead{grid-template-columns:41px minmax(0,1fr) 41px!important;padding:6px 5px!important}header.td-masthead .td-ram{width:40px!important;height:59px!important}header.td-masthead .brand-mark,header.td-masthead .brand-mark svg{width:41px!important;height:41px!important}}
+
+/* Keep the three approved header elements together without altering argyle. */
+@media(min-width:701px){
+ header.td-masthead{grid-template-columns:110px max-content 118px!important;justify-content:center!important;justify-items:center!important;column-gap:18px!important;padding-left:18px!important;padding-right:18px!important}
+ header.td-masthead .td-ram{width:105px!important;height:120px!important;justify-self:end!important}
+ header.td-masthead .brand-mark{width:112px!important;height:112px!important;justify-self:start!important}
+ header.td-masthead .brand-copy{justify-self:center!important}
+}
+@media(min-width:381px) and (max-width:700px){
+ header.td-masthead{grid-template-columns:65px minmax(0,max-content) 65px!important;justify-content:center!important;column-gap:7px!important;padding-left:7px!important;padding-right:7px!important}
+ header.td-masthead .td-ram{width:63px!important;height:82px!important;justify-self:end!important}
+ header.td-masthead .brand-mark{width:64px!important;height:64px!important;justify-self:start!important}
+}
+@media(max-width:380px){
+ header.td-masthead{grid-template-columns:43px minmax(0,max-content) 43px!important;justify-content:center!important;column-gap:3px!important}
+ header.td-masthead .td-ram{width:42px!important;height:60px!important;justify-self:end!important}
+ header.td-masthead .brand-mark{width:42px!important;height:42px!important;justify-self:start!important}
+}
 </style>
 <script defer src="./scotch.js"></script></head><body><header class="td-masthead"><div class="td-ram" aria-label="Rameses golfing mascot"><img src="./assets/rameses-header.svg" alt="Rameses swinging a golf club" width="100" height="164"></div><div class="brand-copy"><h1>Tarheel Degens</h1></div><div class="brand-mark" aria-label="Tarheel Degens golf logo"><img src="tarheel_degens_clean_transparent_logo.png" alt="Tarheel Degens TD flag, putting green and golf ball" style="display:block;width:100%;height:100%;object-fit:contain" /></div></div></header><main>
 <div id="message" class="status">Loading…</div>
