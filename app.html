@@ -594,6 +594,14 @@ header.td-vegas-header img{display:block;width:100%;height:auto;max-width:100%;o
   #setupPage>.card:first-child{margin-top:8px!important}
   #setupPage>.card:first-child h2{margin-top:4px!important}
 }
+
+/* Restore full uncropped banner and pull navigation closer — 2026-11-07 */
+@media(max-width:700px){
+ header.td-vegas-header{aspect-ratio:auto!important;height:auto!important;max-height:none!important;overflow:hidden!important}
+ header.td-vegas-header img{display:block!important;width:100%!important;height:auto!important;object-fit:contain!important;object-position:center!important}
+ main{padding-top:2px!important}
+ #app>.match-tabs{margin-top:2px!important;margin-bottom:8px!important}
+}
 </style>
 <script defer src="./scotch.js"></script></head><body><header class="td-vegas-header"><img src="./assets/45B2B4CF-7E6F-4271-A2FD-73CF5C11B3AD.png" alt="Tarheel Degens — Always Bet on Yourself. Vegas-inspired golf and gambling banner" width="1536" height="512" fetchpriority="high"></header><main>
 <div id="message" class="status">Loading…</div>
