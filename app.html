@@ -582,6 +582,18 @@ header.td-masthead .brand-mark img{display:block!important;width:100%!important;
 /* Full-width responsive Vegas banner; retain all original page functionality. */
 header.td-vegas-header{display:block!important;width:100%;height:auto!important;min-height:0!important;margin:0!important;padding:0!important;background:#56a0d2!important;overflow:hidden!important;line-height:0!important}
 header.td-vegas-header img{display:block;width:100%;height:auto;max-width:100%;object-fit:contain;border:0}
+
+/* Compact mobile Vegas masthead and navigation — 2026-11-07 */
+@media(max-width:700px){
+  /* A shallow crop keeps the sign and side artwork prominent on phones. */
+  header.td-vegas-header{aspect-ratio:3.45/1!important;height:auto!important;max-height:none!important;border-radius:12px!important}
+  header.td-vegas-header img{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center center!important}
+  main{padding:6px 10px 12px!important}
+  #app>.match-tabs{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important;padding:5px!important;margin:6px 0 9px!important;border-radius:14px!important}
+  #app>.match-tabs button{min-width:0!important;min-height:48px!important;padding:7px 3px!important;font-size:clamp(11px,3vw,14px)!important;line-height:1.12!important;border-radius:10px!important;overflow-wrap:normal!important}
+  #setupPage>.card:first-child{margin-top:8px!important}
+  #setupPage>.card:first-child h2{margin-top:4px!important}
+}
 </style>
 <script defer src="./scotch.js"></script></head><body><header class="td-vegas-header"><img src="./assets/45B2B4CF-7E6F-4271-A2FD-73CF5C11B3AD.png" alt="Tarheel Degens — Always Bet on Yourself. Vegas-inspired golf and gambling banner" width="1536" height="512" fetchpriority="high"></header><main>
 <div id="message" class="status">Loading…</div>
