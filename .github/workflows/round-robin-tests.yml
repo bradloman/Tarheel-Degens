@@ -1,0 +1,23 @@
+name: Round Robin Nassau tests
+on:
+  push:
+    branches: [feature/round-robin-nassau]
+  pull_request:
+    paths:
+      - 'round-robin-*.js'
+      - 'tests/round-robin-*.test.js'
+      - '.github/workflows/round-robin-tests.yml'
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Scoring
+        run: node tests/round-robin-nassau.test.js
+      - name: Presses
+        run: node tests/round-robin-presses.test.js
+      - name: Settlement
+        run: node tests/round-robin-settlement.test.js
