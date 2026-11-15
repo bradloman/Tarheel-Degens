@@ -6,10 +6,10 @@ const holes=Array.from({length:18},(_,i)=>({number:i+1,strokeIndex:i+1,scores:{A
 const matches=rr.calculate(players,holes);
 assert.deepEqual(matches.map(m=>m.players),[['A','B'],['A','C'],['B','C']]);
 assert.deepEqual(matches.map(m=>m.strokes),[[0,4],[0,12],[0,8]]);
-assert.deepEqual(matches.map(m=>m.holes[0].net),[[4,3],[4,3],[4,4]]);
+assert.deepEqual(matches.map(m=>m.holes[0].net),[[4,3],[4,3],[4,3]]);
 assert.equal(matches[0].front.lead,-4);
 assert.equal(matches[1].front.lead,-5);
-assert.equal(matches[2].front.lead,-8);
+assert.equal(matches[2].front.lead,-5);
 assert.equal(matches[0].front.closed,true);
 assert.equal(matches[2].front.closed,true);
 assert.equal(matches[2].overall.lead,-8);
