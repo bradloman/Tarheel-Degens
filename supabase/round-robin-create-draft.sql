@@ -20,6 +20,11 @@ declare
   v_match_ids uuid[] := array[]::uuid[];
   v_entry_name text;
   v_entry_index numeric;
+  v_handicap_index numeric;
+  v_course_handicap integer;
+  v_rating numeric;
+  v_slope numeric;
+  v_par numeric;
 begin
   if v_creator is null then raise exception 'Sign in required'; end if;
   if not exists(select 1 from public.players where id=v_creator) then
@@ -32,26 +37,29 @@ begin
   if p_date is null or p_stake is null or p_stake <= 0 then
     raise exception 'A date and positive per-bet stake are required';
   end if;
-  if p_tee is not null and (p_course is null or not exists (
-    select 1 from public.course_tees where id=p_tee and course_id=p_course
-  )) then raise exception 'Tees must belong to the selected course'; end if;
-  if p_course is not null and not exists(select 1 from public.courses where id=p_course) then
-    raise exception 'Course not found';
+  if p_course is null or p_tee is null then
+    raise exception 'Round Robin Nassau requires a course and tees for net scoring';
+  end if;
+  select course_rating,slope_rating,par into v_rating,v_slope,v_par
+    from public.course_tees where id=p_tee and course_id=p_course;
+  if not found or v_rating is null or v_slope is null or v_par is null or v_slope <= 0 then
+    raise exception 'Valid course and tee ratings are required';
   end if;
 
   -- Validate the entire roster before creating anything.
   foreach v_key in array p_players loop
     if v_key ~ '^registered:[0-9a-fA-F-]{36}$' then
       v_player := substring(v_key from 12)::uuid;
-      if not exists(select 1 from public.players
-                    where id=v_player and (directory_visible or id=v_creator)) then
-        raise exception 'Registered player is not available';
-      end if;
+      select handicap_index into v_handicap_index from public.players
+        where id=v_player and (directory_visible or id=v_creator);
+      if not found then raise exception 'Registered player is not available'; end if;
+      if v_handicap_index is null then raise exception 'Each player needs a handicap index'; end if;
     elsif v_key ~ '^directory:[0-9a-fA-F-]{36}$' then
       v_entry := substring(v_key from 11)::uuid;
-      if not exists(select 1 from public.player_directory_entries where id=v_entry and removed_from_directory is not true) then
-        raise exception 'Directory player is not available';
-      end if;
+      select handicap_index into v_handicap_index from public.player_directory_entries
+        where id=v_entry and removed_from_directory is not true;
+      if not found then raise exception 'Directory player is not available'; end if;
+      if v_handicap_index is null then raise exception 'Each player needs a handicap index'; end if;
     else
       raise exception 'Invalid player selection';
     end if;
@@ -89,15 +97,18 @@ begin
     foreach v_key in array array[p_players[case v_i when 1 then 1 when 2 then 1 else 2 end],p_players[case v_i when 1 then 2 when 2 then 3 else 3 end]] loop
       if left(v_key,11) = 'registered:' then
         v_player := substring(v_key from 12)::uuid;
-        insert into public.match_players(match_id,player_id,course_handicap)
-        values(v_match,v_player,0);
+        select handicap_index into v_handicap_index from public.players where id=v_player;
+        v_course_handicap := floor(v_handicap_index * v_slope / 113 + v_rating - v_par + 0.5);
+        insert into public.match_players(match_id,player_id,course_handicap,tee_id)
+        values(v_match,v_player,v_course_handicap,p_tee);
       else
         v_entry := substring(v_key from 11)::uuid;
         select display_name,handicap_index into strict v_entry_name,v_entry_index
           from public.player_directory_entries where id=v_entry;
+        v_course_handicap := floor(v_entry_index * v_slope / 113 + v_rating - v_par + 0.5);
         insert into public.guest_players
           (match_id,display_name,handicap_index,course_handicap,directory_entry_id)
-        values(v_match,v_entry_name,v_entry_index,0,v_entry);
+        values(v_match,v_entry_name,v_entry_index,v_course_handicap,v_entry);
       end if;
     end loop;
     insert into public.round_robin_nassau_matches(group_id,match_id,pairing_number)
