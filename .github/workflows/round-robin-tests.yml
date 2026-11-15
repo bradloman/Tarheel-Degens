@@ -19,5 +19,7 @@ jobs:
         run: node tests/round-robin-nassau.test.js
       - name: Presses
         run: node tests/round-robin-presses.test.js
+      - name: Shared score storage adapter
+        run: node tests/round-robin-adapter.test.js
       - name: Settlement
         run: node tests/round-robin-settlement.test.js
