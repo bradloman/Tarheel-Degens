@@ -9,7 +9,7 @@
 <section class="card"><h2>Shared scorecard</h2><div class="tabs" id="nineTabs"><button data-nine="1" class="active">Front 9</button><button data-nine="2">Back 9</button></div><p class="muted">Enter each player's gross score once. All three matchups update instantly.</p><table class="score"><thead><tr><th>Hole</th><th>Player A</th><th>Player B</th><th>Player C</th></tr></thead><tbody id="holes"></tbody></table></section>
 <section class="card"><h2>Matchups</h2><div class="tabs" id="pairs"><button data-pair="0" class="active">A vs B</button><button data-pair="1">A vs C</button><button data-pair="2">B vs C</button></div><div class="status" id="statuses"></div><h2>Presses</h2><div id="presses" class="muted">No presses yet.</div><p class="muted">Preview tracks eligibility; press creation and persistence will be connected to the existing Nassau betting system.</p></section>
 </main><script type="module">
-import {roundRobinAllStandings,roundRobinCanPress,roundRobinNetScores,ROUND_ROBIN_SEGMENTS} from './round-robin-nassau.js';
+import {roundRobinAllStandings,roundRobinCanPress,roundRobinNetScores,roundRobinPairNetByHole,roundRobinPairs,ROUND_ROBIN_SEGMENTS} from './round-robin-nassau.js';
 import {loadRoundRobinGroup,saveRoundRobinGross} from './round-robin-data.js';
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
 let players=[{id:'A',courseHandicap:10},{id:'B',courseHandicap:13},{id:'C',courseHandicap:16}];
@@ -20,10 +20,10 @@ let pars=[4,4,3,5,4,4,3,5,4,4,4,3,5,4,4,3,5,4];
 let strokeIndexes=[9,3,17,1,11,7,15,5,13,10,4,18,2,12,8,16,6,14];
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 function label(id){return players.find(p=>p.id===id)?.name||id;}
-function netByHole(){return Object.fromEntries(Object.entries(gross).map(([hole,values])=>[hole,roundRobinNetScores(players,values,strokeIndexes[Number(hole)-1])]));}
+function netByHole(pair){return roundRobinPairNetByHole(players,gross,strokeIndexes,pair);}
 function formatStatus(pair,segment,net){const st=segment.status;if(!st.played)return 'Not started';if(st.lead===0)return st.closed?'Halved':'All square';const winner=st.lead>0?pair.playerIds[0]:pair.playerIds[1];return label(winner)+' '+Math.abs(st.lead)+' UP'+(st.closed?' · Closed':'');}
-function render(){const start=nine===1?1:10;const net=netByHole();document.querySelector('.score thead tr').innerHTML='<th>Hole</th>'+players.map(p=>'<th>'+escapeHtml(p.name||p.id)+'<span class="net">CH '+p.courseHandicap+'</span></th>').join('');$('holes').innerHTML=Array.from({length:9},(_,i)=>{const h=start+i;return '<tr><th>'+h+'<span class="net">Par '+pars[h-1]+'</span></th>'+players.map(p=>'<td><input type="number" min="1" max="30" inputmode="numeric" aria-label="Hole '+h+' player '+escapeHtml(p.name||p.id)+'" readOnly?'disabled':'' data-hole="'+h+'" data-player="'+escapeHtml(p.id)+'" value="'+(gross[h]?.[p.id]??'')+'"><span class="net">'+(net[h]?.[p.id]!=null?'Net '+net[h][p.id]:'')+'</span></td>').join('')+'</tr>'}).join('');
-const standings=roundRobinAllStandings(players,net);const pair=standings[pairIndex];
+function render(){const start=nine===1?1:10;const pairs=roundRobinPairs(players);const net=netByHole(pairs[pairIndex]);document.querySelector('.score thead tr').innerHTML='<th>Hole</th>'+players.map(p=>'<th>'+escapeHtml(p.name||p.id)+'<span class="net">CH '+p.courseHandicap+'</span></th>').join('');$('holes').innerHTML=Array.from({length:9},(_,i)=>{const h=start+i;return '<tr><th>'+h+'<span class="net">Par '+pars[h-1]+'</span></th>'+players.map(p=>'<td><input type="number" min="1" max="30" inputmode="numeric" aria-label="Hole '+h+' player '+escapeHtml(p.name||p.id)+'" readOnly?'disabled':'' data-hole="'+h+'" data-player="'+escapeHtml(p.id)+'" value="'+(gross[h]?.[p.id]??'')+'"><span class="net">'+(net[h]?.[p.id]!=null?'Net '+net[h][p.id]:'')+'</span></td>').join('')+'</tr>'}).join('');
+const pair=roundRobinAllStandings(players,net)[pairIndex];
 $('statuses').innerHTML=pair.segments.map(seg=>'<div><strong>'+({F:'Front',B:'Back',O:'Overall'}[seg.key])+'</strong><span>'+formatStatus(pair,seg,net)+'</span><div class="net">'+pair.playerIds.map(id=>roundRobinCanPress(pair,net,seg,id)?escapeHtml(label(id))+' eligible to press':'').filter(Boolean).join(', ')+'</div></div>').join('');
 $('presses').textContent='No presses recorded in preview.';
 document.querySelectorAll('[data-nine]').forEach(b=>b.classList.toggle('active',Number(b.dataset.nine)===nine));
