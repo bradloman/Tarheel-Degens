@@ -42,3 +42,45 @@ export const ROUND_ROBIN_SEGMENTS = Object.freeze([
   {key: 'B', start: 10, end: 18},
   {key: 'O', start: 1, end: 18}
 ]);
+
+
+// A press starts on the hole AFTER it is accepted. It belongs only to the
+// selected pairing and segment; other pairings remain completely independent.
+export function roundRobinPressStatus(pair, netByHole, press, segment) {
+  if (!pair || !segment || !press || !Number.isInteger(press.startHole) ||
+      press.startHole <= segment.start || press.startHole > segment.end ||
+      !pair.playerIds.includes(press.calledBy)) {
+    throw new Error('Invalid Round Robin press.');
+  }
+  return roundRobinSegmentStatus(pair, netByHole, press.startHole, segment.end);
+}
+
+export function roundRobinCanPress(pair, netByHole, segment, playerId, presses = []) {
+  if (!pair.playerIds.includes(playerId)) return false;
+  const status = roundRobinSegmentStatus(pair, netByHole, segment.start, segment.end);
+  if (status.played === 0 || status.closed || status.lead === 0) return false;
+  const downPlayer = status.lead > 0 ? pair.playerIds[1] : pair.playerIds[0];
+  if (downPlayer !== playerId || Math.abs(status.lead) < 2) return false;
+  const nextHole = status.lastHole + 1;
+  if (nextHole > segment.end) return false;
+  // Do not allow the same player to call multiple active presses in the
+  // same segment on the same hole.
+  return !presses.some(p => !p.undone && p.calledBy === playerId &&
+    p.segment === segment.key && p.startHole === nextHole);
+}
+
+export function roundRobinAllStandings(players, netByHole, presses = []) {
+  const pairs = roundRobinPairs(players);
+  return pairs.map(pair => ({
+    ...pair,
+    segments: ROUND_ROBIN_SEGMENTS.map(segment => ({
+      ...segment,
+      status: roundRobinSegmentStatus(pair, netByHole, segment.start, segment.end),
+      presses: presses.filter(p => !p.undone && p.pairKey === pair.key &&
+        p.segment === segment.key).map(p => ({
+        ...p,
+        status: roundRobinPressStatus(pair, netByHole, p, segment)
+      }))
+    }))
+  }));
+}
