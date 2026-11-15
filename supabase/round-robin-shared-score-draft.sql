@@ -42,19 +42,19 @@ begin
       select 1 from public.match_players
       where match_id=v_match and player_id=v_registered
     ) then
-      insert into public.hole_scores(match_id,player_id,hole_number,gross_strokes)
-      values(v_match,v_registered,p_hole,p_gross)
+      insert into public.hole_scores(match_id,player_id,hole_number,gross_strokes,saved_by)
+      values(v_match,v_registered,p_hole,p_gross,v_actor)
       on conflict (match_id,player_id,hole_number)
-      do update set gross_strokes=excluded.gross_strokes;
+      do update set gross_strokes=excluded.gross_strokes,saved_by=excluded.saved_by,saved_at=now();
       v_count := v_count+1;
     elsif v_directory is not null then
       select id into v_guest from public.guest_players
         where match_id=v_match and directory_entry_id=v_directory;
       if found then
-        insert into public.guest_hole_scores(match_id,guest_id,hole_number,gross_strokes)
-        values(v_match,v_guest,p_hole,p_gross)
-        on conflict (match_id,guest_id,hole_number)
-        do update set gross_strokes=excluded.gross_strokes;
+        insert into public.guest_hole_scores(match_id,guest_id,hole_number,gross_strokes,saved_by)
+        values(v_match,v_guest,p_hole,p_gross,v_actor)
+        on conflict (guest_id,hole_number)
+        do update set gross_strokes=excluded.gross_strokes,saved_by=excluded.saved_by,saved_at=now();
         v_count := v_count+1;
       end if;
     end if;
