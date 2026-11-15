@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Round Robin Nassau — Scorecard Preview</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color:#102b4c;background:#eaf4fb}*{box-sizing:border-box}body{margin:0;padding:16px}main{max-width:650px;margin:auto}header{text-align:center;padding:16px;background:#85c6ec;border-radius:14px;margin-bottom:12px}h1{font-size:1.5rem;margin:0}h2{font-size:1.1rem}.card{background:white;border-radius:12px;padding:14px;margin:12px 0;box-shadow:0 2px 8px #1232}.muted{color:#53697e;font-size:.85rem}button,select,input{font:inherit;border:1px solid #a9bfd0;border-radius:8px;padding:9px;background:white;color:#102b4c}button{cursor:pointer}.active{background:#102b4c;color:white}.tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs button{flex:1}.score{width:100%;border-collapse:collapse;text-align:center}.score th,.score td{padding:5px 2px;border-bottom:1px solid #dce7ef}.score input{width:100%;max-width:64px;text-align:center;padding:8px 2px}.score th:first-child{text-align:left;width:42px}.status{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.status>div{background:#f0f7fc;border-radius:8px;padding:9px}.status strong{display:block}.status span{font-size:.85rem}.net{font-size:.7rem;color:#446e92;display:block}.banner{background:#fff7df;border:1px solid #ecd69b;border-radius:8px;padding:10px;font-size:.85rem}
+</style></head><body><main>
+<header><h1>Tarheel Degens</h1><strong>Round Robin Nassau</strong><div class="muted">Three players · Three independent Nassau matches</div></header>
+<div class="banner">Development preview only. Scores are stored in this page while it is open, not in Supabase. No bets or settlements are posted.</div>
+<section class="card"><h2>Shared scorecard</h2><div class="tabs" id="nineTabs"><button data-nine="1" class="active">Front 9</button><button data-nine="2">Back 9</button></div><p class="muted">Enter each player's gross score once. All three matchups update instantly.</p><table class="score"><thead><tr><th>Hole</th><th>Player A</th><th>Player B</th><th>Player C</th></tr></thead><tbody id="holes"></tbody></table></section>
+<section class="card"><h2>Matchups</h2><div class="tabs" id="pairs"><button data-pair="0" class="active">A vs B</button><button data-pair="1">A vs C</button><button data-pair="2">B vs C</button></div><div class="status" id="statuses"></div><h2>Presses</h2><div id="presses" class="muted">No presses yet.</div><p class="muted">Preview tracks eligibility; press creation and persistence will be connected to the existing Nassau betting system.</p></section>
+</main><script type="module">
+import {roundRobinAllStandings,roundRobinCanPress,roundRobinNetScores,ROUND_ROBIN_SEGMENTS} from './round-robin-nassau.js';
+const players=[{id:'A',courseHandicap:10},{id:'B',courseHandicap:13},{id:'C',courseHandicap:16}];
+const gross={};let nine=1,pairIndex=0;
+const $=id=>document.getElementById(id);
+const pars=[4,4,3,5,4,4,3,5,4,4,4,3,5,4,4,3,5,4];
+const strokeIndexes=[9,3,17,1,11,7,15,5,13,10,4,18,2,12,8,16,6,14];
+function netByHole(){return Object.fromEntries(Object.entries(gross).map(([hole,values])=>[hole,roundRobinNetScores(players,values,strokeIndexes[Number(hole)-1])]));}
+function formatStatus(pair,segment,net){const st=segment.status;if(!st.played)return 'Not started';if(st.lead===0)return st.closed?'Halved':'All square';const winner=st.lead>0?pair.playerIds[0]:pair.playerIds[1];return winner+' '+Math.abs(st.lead)+' UP'+(st.closed?' · Closed':'');}
+function render(){const start=nine===1?1:10;const net=netByHole();$('holes').innerHTML=Array.from({length:9},(_,i)=>{const h=start+i;return '<tr><th>'+h+'<span class="net">Par '+pars[h-1]+'</span></th>'+players.map(p=>'<td><input type="number" min="1" max="30" inputmode="numeric" aria-label="Hole '+h+' player '+p.id+'" data-hole="'+h+'" data-player="'+p.id+'" value="'+(gross[h]?.[p.id]??'')+'"><span class="net">'+(net[h]?.[p.id]!=null?'Net '+net[h][p.id]:'')+'</span></td>').join('')+'</tr>'}).join('');
+const standings=roundRobinAllStandings(players,net);const pair=standings[pairIndex];
+$('statuses').innerHTML=pair.segments.map(seg=>'<div><strong>'+({F:'Front',B:'Back',O:'Overall'}[seg.key])+'</strong><span>'+formatStatus(pair,seg,net)+'</span><div class="net">'+pair.playerIds.map(id=>roundRobinCanPress(pair,net,seg,id)?id+' eligible to press':'').filter(Boolean).join(', ')+'</div></div>').join('');
+$('presses').textContent='No presses recorded in preview.';
+document.querySelectorAll('[data-nine]').forEach(b=>b.classList.toggle('active',Number(b.dataset.nine)===nine));
+document.querySelectorAll('[data-pair]').forEach(b=>b.classList.toggle('active',Number(b.dataset.pair)===pairIndex));
+}
+$('holes').addEventListener('change',e=>{const t=e.target;if(!t.matches('[data-hole]'))return;const h=Number(t.dataset.hole),p=t.dataset.player,v=t.value.trim();if(v!==''&&(!Number.isInteger(Number(v))||Number(v)<1||Number(v)>30)){alert('Enter a gross score from 1 to 30.');return;}gross[h]??={};if(v==='')delete gross[h][p];else gross[h][p]=Number(v);render();});
+$('nineTabs').addEventListener('click',e=>{const b=e.target.closest('[data-nine]');if(b){nine=Number(b.dataset.nine);render();}});
+$('pairs').addEventListener('click',e=>{const b=e.target.closest('[data-pair]');if(b){pairIndex=Number(b.dataset.pair);render();}});
+render();
+</script></body></html>
