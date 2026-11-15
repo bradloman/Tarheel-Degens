@@ -25,6 +25,8 @@ export async function loadRoundRobinGroup(db, groupId) {
     throw new Error('Round Robin contains invalid Nassau matches.');
   }
   const matchById = new Map(matches.map(m => [m.id,m]));
+  if (matches.some(m => m.match_date !== matches[0].match_date || Number(m.stake) !== Number(matches[0].stake)))
+    throw new Error('Linked Nassau matches must share a date and stake.');
   if (new Set(matches.map(m => m.tee_id)).size !== 1 ||
       new Set(matches.map(m => m.course_id)).size !== 1) {
     throw new Error('Round Robin matches must use the same course and tees.');
