@@ -12,11 +12,10 @@ declare
   v_creator uuid := (select auth.uid());
   v_group uuid;
   v_match uuid;
-  v_keys text[];
   v_key text;
   v_player uuid;
   v_entry uuid;
-  v_pair int[];
+  v_i int;
   v_pair_no int := 0;
   v_match_ids uuid[] := array[]::uuid[];
   v_entry_name text;
@@ -26,7 +25,7 @@ begin
   if not exists(select 1 from public.players where id=v_creator) then
     raise exception 'Save your profile before creating a match';
   end if;
-  if cardinality(p_players) <> 3 or array_position(p_players,null) is not null
+  if p_players is null or cardinality(p_players) <> 3 or array_position(p_players,null) is not null
      or (select count(distinct k) from unnest(p_players) k) <> 3 then
     raise exception 'Select exactly three distinct players';
   end if;
@@ -50,7 +49,7 @@ begin
       end if;
     elsif v_key ~ '^directory:[0-9a-fA-F-]{36}$' then
       v_entry := substring(v_key from 11)::uuid;
-      if not exists(select 1 from public.player_directory_entries where id=v_entry) then
+      if not exists(select 1 from public.player_directory_entries where id=v_entry and removed_from_directory is not true) then
         raise exception 'Directory player is not available';
       end if;
     else
@@ -69,8 +68,8 @@ begin
   insert into public.round_robin_nassau_groups(created_by)
   values(v_creator) returning id into v_group;
 
-  foreach v_pair slice 1 in array array[array[1,2],array[1,3],array[2,3]] loop
-    v_pair_no := v_pair_no + 1;
+  for v_i in 1..3 loop
+    v_pair_no := v_i;
     insert into public.matches
       (created_by,game_type,match_date,stake,player_count,hole_count,course_id,tee_id,notes)
     values
@@ -78,7 +77,7 @@ begin
        jsonb_build_object('round_robin_group',v_group,'pairing',v_pair_no)::text)
     returning id into v_match;
 
-    foreach v_key in array array[p_players[v_pair[1]],p_players[v_pair[2]]] loop
+    foreach v_key in array array[p_players[case v_i when 1 then 1 when 2 then 1 else 2 end],p_players[case v_i when 1 then 2 when 2 then 3 else 3 end]] loop
       if left(v_key,11) = 'registered:' then
         v_player := substring(v_key from 12)::uuid;
         insert into public.match_players(match_id,player_id,course_handicap)
