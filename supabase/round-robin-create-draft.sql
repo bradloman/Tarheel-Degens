@@ -57,6 +57,15 @@ begin
     end if;
   end loop;
 
+  -- The same claimed directory player must not appear under multiple keys.
+  if exists(select 1 from public.player_directory_entries d1
+            join public.player_directory_entries d2 on d1.claimed_by=d2.claimed_by
+            where d1.id<>d2.id and d1.claimed_by is not null
+              and ('directory:'||d1.id::text)=any(p_players)
+              and ('directory:'||d2.id::text)=any(p_players)) then
+    raise exception 'A claimed player was selected twice';
+  end if;
+
   -- One selected person must not appear under two different identities.
   if exists(
     select 1 from public.player_directory_entries d
