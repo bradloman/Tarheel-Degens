@@ -10,16 +10,35 @@ export function roundRobinPairs(players) {
   }));
 }
 
-export function roundRobinNetScores(players, grossByPlayer, strokeIndex) {
-  if (!Number.isInteger(strokeIndex) || strokeIndex < 1 || strokeIndex > 18) throw new Error('Invalid stroke index.');
-  if (!Array.isArray(players) || players.length !== 3 || players.some(p => !Number.isInteger(p.courseHandicap))) throw new Error('Three course handicaps required.');
-  const low = Math.min(...players.map(p => p.courseHandicap));
-  return Object.fromEntries(players.map(p => {
-    const gross = grossByPlayer[p.id];
+// Stroke allocation is independent for each 1v1 Nassau pairing.
+export function roundRobinNetScores(players, grossByPlayer, strokeIndex, pair) {
+  if (!Number.isInteger(strokeIndex) || strokeIndex < 1 || strokeIndex > 18)
+    throw new Error('Invalid stroke index.');
+  if (!Array.isArray(players) || players.length !== 3 ||
+      players.some(p => !Number.isInteger(p.courseHandicap)))
+    throw new Error('Three course handicaps required.');
+  if (!pair || !Array.isArray(pair.playerIds) || pair.playerIds.length !== 2 ||
+      new Set(pair.playerIds).size !== 2) throw new Error('Valid pairing required.');
+  const selected = pair.playerIds.map(id => players.find(p => p.id === id));
+  if (selected.some(p => !p)) throw new Error('Pairing includes an unknown player.');
+  const low = Math.min(...selected.map(p => p.courseHandicap));
+  return Object.fromEntries(selected.map(p => {
+    const gross = grossByPlayer?.[p.id];
     if (!Number.isInteger(gross) || gross < 1 || gross > 30) return [p.id, null];
     const allowance = p.courseHandicap - low;
     const strokes = Math.floor(allowance / 18) + (strokeIndex <= allowance % 18 ? 1 : 0);
     return [p.id, gross - strokes];
+  }));
+}
+
+export function roundRobinPairNetByHole(players, grossByHole, strokeIndexes, pair) {
+  if (!Array.isArray(strokeIndexes) || strokeIndexes.length !== 18)
+    throw new Error('18 stroke indexes required.');
+  return Object.fromEntries(Object.entries(grossByHole).map(([hole, gross]) => {
+    const index = Number(hole);
+    if (!Number.isInteger(index) || index < 1 || index > 18)
+      throw new Error('Invalid hole.');
+    return [hole, roundRobinNetScores(players, gross, strokeIndexes[index - 1], pair)];
   }));
 }
 
