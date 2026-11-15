@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {roundRobinPairs, roundRobinNetScores, roundRobinSegmentStatus, ROUND_ROBIN_SEGMENTS, roundRobinCanPress, roundRobinAllStandings, roundRobinPressStatus} from './round-robin-nassau.js';
+import {roundRobinPairs, roundRobinNetScores, roundRobinPairNetByHole, roundRobinSegmentStatus, ROUND_ROBIN_SEGMENTS, roundRobinCanPress, roundRobinAllStandings, roundRobinPressStatus} from './round-robin-nassau.js';
 
 test('three players produce exactly three independent matchups', () => {
   const pairs = roundRobinPairs([{id:'A'},{id:'B'},{id:'C'}]);
@@ -12,10 +12,18 @@ test('reject invalid rosters', () => {
   assert.throws(()=>roundRobinPairs([{id:'A'},{id:'B'}]));
   assert.throws(()=>roundRobinPairs([{id:'A'},{id:'A'},{id:'C'}]));
 });
-test('net scores use lowest course handicap across all three players', () => {
-  const players=[{id:'A',courseHandicap:10},{id:'B',courseHandicap:13},{id:'C',courseHandicap:29}];
-  assert.deepEqual(roundRobinNetScores(players,{A:4,B:5,C:6},2),{A:4,B:4,C:4});
-  assert.deepEqual(roundRobinNetScores(players,{A:4,B:5,C:6},4),{A:4,B:5,C:5});
+test('net strokes are allocated independently for each pairing', () => {
+  const players=[{id:'A',courseHandicap:5},{id:'B',courseHandicap:10},{id:'C',courseHandicap:15}];
+  const gross={A:4,B:5,C:6};
+  const [ab,ac,bc]=roundRobinPairs(players);
+  assert.deepEqual(roundRobinNetScores(players,gross,3,ab),{A:4,B:4});
+  assert.deepEqual(roundRobinNetScores(players,gross,3,ac),{A:4,C:5});
+  assert.deepEqual(roundRobinNetScores(players,gross,3,bc),{B:5,C:5});
+  assert.deepEqual(roundRobinNetScores(players,gross,8,bc),{B:5,C:5});
+  assert.deepEqual(roundRobinNetScores(players,gross,8,ac),{A:4,C:5});
+  assert.throws(()=>roundRobinNetScores(players,gross,3));
+  const indexes=Array.from({length:18},(_,i)=>i+1);
+  assert.deepEqual(roundRobinPairNetByHole(players,{1:gross},indexes,bc)[1],{B:5,C:5});
 });
 test('match closes when lead exceeds remaining holes', () => {
   const pair={playerIds:['A','B']}, net={};
