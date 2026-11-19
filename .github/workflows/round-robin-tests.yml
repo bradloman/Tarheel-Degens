@@ -23,3 +23,6 @@ jobs:
         run: node tests/round-robin-adapter.test.js
       - name: Settlement
         run: node tests/round-robin-settlement.test.js
+
+      - name: Press persistence RPC adapter
+        run: node tests/round-robin-press-store.test.js
