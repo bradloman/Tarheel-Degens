@@ -16,7 +16,7 @@ assert.equal(ab.holes[0].winner,'B');
 assert.equal(ac.holes[0].winner,'C');
 assert.equal(bc.holes[0].winner,'C');
 // Two-down is matchup-specific. A-B and A-C can be pressed; B-C is tied.
-[ab,ac,bc]=round(2,()=>({A:3,B:5,C:5}));
+[ab,ac,bc]=round(2,()=>({A:3,B:5,C:6}));
 assert.equal(presses.eligible(ab,'front'),true);
 assert.equal(presses.eligible(ac,'front'),true);
 assert.equal(presses.eligible(bc,'front'),false);
@@ -26,7 +26,7 @@ assert.equal(presses.eligible(ab,'back'),false);
 const first={segment:'front',startHole:3};
 assert.equal(presses.eligible(ab,'front',[first]),false);
 // Lose holes 3 and 4 in A-B: the first press is now down two and can be re-pressed.
-[ab,ac,bc]=round(4,h=>h<=2?{A:3,B:5,C:5}:{A:6,B:4,C:4});
+[ab,ac,bc]=round(4,h=>h<=2?{A:3,B:5,C:6}:{A:6,B:4,C:4});
 assert.equal(presses.evaluate(ab,[first])[0].lead,-2);
 assert.equal(presses.eligible(ab,'front',[first]),true);
 const second={segment:'front',startHole:5};
