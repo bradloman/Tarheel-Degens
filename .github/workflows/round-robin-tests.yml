@@ -32,3 +32,5 @@ jobs:
         run: node tests/round-robin-saved-handicap.test.js
       - name: Read-only match loader
         run: node tests/round-robin-loader.test.js
+      - name: Shared scorecard view
+        run: node tests/round-robin-scorecard-view.test.js
