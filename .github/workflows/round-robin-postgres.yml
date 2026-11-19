@@ -4,6 +4,7 @@ on:
     branches: [feature/round-robin-nassau]
     paths:
       - 'supabase/round-robin-presses.sql'
+      - 'supabase/round-robin-finalization.sql'
       - 'tests/sql/**'
       - '.github/workflows/round-robin-postgres.yml'
   workflow_dispatch:
@@ -53,3 +54,6 @@ jobs:
 
       - name: Exercise independent re-presses and undo locks
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/round-robin-rpc-repress.sql
+
+      - name: Compile atomic Round Robin finalization
+        run: psql -v ON_ERROR_STOP=1 -f supabase/round-robin-finalization.sql
