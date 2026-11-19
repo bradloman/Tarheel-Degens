@@ -1347,6 +1347,9 @@ function updateNinesPoints(){
  el('bets').textContent='Nines points: '+roster.map((p,i)=>shortName(p.name)+' '+totals[i]).join(' · ');el('presses').textContent='No presses in Nines.';
 }
 let roundRobinSelectedPair=0;
+// Press RPCs are deliberately gated until the staged migration is deployed and verified.
+const roundRobinPressRpcEnabled=false;
+
 function renderRoundRobinMatchups(){
  const box=el('roundRobinMatchups');if(!box)return;
  const enabled=match?.game_type==='round_robin'&&Number(match.player_count)===3&&Number(match.hole_count)===18;
@@ -1372,9 +1375,9 @@ function renderRoundRobinMatchups(){
   const status=key=>{const r=m[key],leader=r.lead>0?m.players[0]:r.lead<0?m.players[1]:null;return '<div style="flex:1;min-width:90px;padding:8px;background:#eaf4fb;border-radius:8px"><strong>'+key[0].toUpperCase()+key.slice(1)+'</strong><div>'+(!r.played?'Not started':r.lead===0?'AS':Math.abs(r.lead)+(r.closed&&r.remaining>0?'&'+r.remaining:' UP')+' '+safe(shortName(names[leader])))+'</div></div>'};
   const pressSummary=['front','back','overall'].map(segment=>{
    const eligible=RoundRobinPresses.eligible(m,segment);
-   return '<span style="display:inline-block;margin:4px 6px 0 0;font-size:13px">'+segment+': '+(eligible?'Press eligible':'No new press')+'</span>';
+   return '<span style="display:inline-block;margin:4px 6px 0 0;font-size:13px">'+segment+': '+(eligible?'Press eligible':'No new press')+(eligible?'<button type="button" data-rr-press="'+segment+'" disabled title="Database press activation pending">Activate</button>':'')+'</span>';
   }).join('');
-  box.innerHTML='<h3>Round Robin Nassau matchups</h3><p class="muted">Shared gross scores · independent net match results</p><div style="display:flex;gap:6px;flex-wrap:wrap">'+buttons+'</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+['front','back','overall'].map(status).join('')+'</div><div style="margin-top:8px"><strong>Press opportunities</strong><div>'+pressSummary+'</div><small>Read-only eligibility preview; presses are not yet saved or activated.</small></div>';
+  box.innerHTML='<h3>Round Robin Nassau matchups</h3><p class="muted">Shared gross scores · independent net match results</p><div style="display:flex;gap:6px;flex-wrap:wrap">'+buttons+'</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+['front','back','overall'].map(status).join('')+'</div><div style="margin-top:8px"><strong>Press opportunities</strong><div>'+pressSummary+'</div><small>Press activation and undo will be enabled after the database migration is verified.</small></div>';
   box.querySelectorAll('[data-rr-pair]').forEach(b=>b.addEventListener('click',()=>{roundRobinSelectedPair=Number(b.dataset.rrPair);renderRoundRobinMatchups()}));
  }catch(e){box.textContent='Round Robin standings unavailable: '+e.message;}
 }
