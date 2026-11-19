@@ -36,3 +36,5 @@ jobs:
         run: node tests/round-robin-scorecard-view.test.js
       - name: Shared score entry
         run: node tests/round-robin-score-entry.test.js
+      - name: Press controls
+        run: node tests/round-robin-press-controls.test.js
