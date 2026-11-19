@@ -26,3 +26,5 @@ jobs:
 
       - name: Press persistence RPC adapter
         run: node tests/round-robin-press-store.test.js
+      - name: Matchup and re-press scenarios
+        run: node tests/round-robin-scenarios.test.js
