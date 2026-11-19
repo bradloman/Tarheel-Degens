@@ -12,7 +12,7 @@ function scope(matchId,a,b){
 }
 function normalize(row){
  return {id:row.id,segment:row.segment,startHole:row.start_hole,
-   playerA:row.player_a,playerB:row.player_b,createdAt:row.created_at};
+   playerA:row.player_a,playerB:row.player_b,parentId:row.parent_press_id??null,createdAt:row.created_at};
 }
 function create(client,matchId,a,b){
  const key=scope(matchId,a,b);
@@ -23,12 +23,12 @@ function create(client,matchId,a,b){
    if(error)throw error;
    return (data||[]).map(normalize);
   },
-  async add(segment,startHole,userId){
+  async add(segment,startHole,userId,parentId=null){
    if(!['front','back','overall'].includes(segment))throw Error('Invalid segment');
    const [min,max]=segment==='front'?[2,9]:segment==='back'?[11,18]:[2,18];
    if(!Number.isInteger(startHole)||startHole<min||startHole>max)throw Error('Invalid press start');
    if(!userId)throw Error('Authenticated user required');
-   const {data,error}=await client.rpc('activate_round_robin_press',{p_match:matchId,p_player_a:key.player_a,p_player_b:key.player_b,p_segment:segment,p_start:startHole});
+   const {data,error}=await client.rpc('activate_round_robin_press',{p_match:matchId,p_player_a:key.player_a,p_player_b:key.player_b,p_segment:segment,p_start:startHole,p_parent:parentId});
    if(error)throw error;
    return {id:data,segment,startHole,playerA:key.player_a,playerB:key.player_b};
   },
