@@ -4,7 +4,8 @@
 function snapshot(roster,teeHoles,scores,guestScores,courseHandicap){
  if(roster.length!==3)throw Error('Round Robin requires exactly three players');
  const players=roster.map(p=>{
-  const ch=p.index!=null&&p.index!==''?courseHandicap(p.index):Number(p.handicap);
+  const saved=p.course_handicap??p.courseHandicap;
+  const ch=saved!=null&&saved!==''?Number(saved):p.index!=null&&p.index!==''?courseHandicap(p.index):Number(p.handicap);
   if(!Number.isInteger(ch))throw Error('Missing course handicap for '+p.id);
   return {id:p.id,courseHandicap:ch,name:p.name};
  });
