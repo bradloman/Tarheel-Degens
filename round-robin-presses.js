@@ -24,10 +24,16 @@
  function eligible(match,segment,existing=[]){
   const range={front:[1,9],back:[10,18],overall:[1,18]}[segment];
   if(!range)throw Error('Invalid segment');
-  const {lead,last,closed}=match[segment];
-  if(closed||last<range[0]||last>=range[1])return false;
+  // The base Nassau can close early while a separately started press stays live.
+  // Derive progress from saved holes rather than the base bet's closed status.
+  let last=range[0]-1;
+  for(let h=range[0];h<=range[1];h++){
+   if(!match.holes[h-1]?.played)break;
+   last=h;
+  }
+  if(last<range[0]||last>=range[1])return false;
   const thread=existing.filter(p=>p.segment===segment).sort((a,b)=>a.startHole-b.startHole);
-  const latest=thread.length?evaluate(match,[thread[thread.length-1]])[0]:{lead};
+  const latest=thread.length?evaluate(match,[thread[thread.length-1]])[0]:match[segment];
   return !latest.closed&&Math.abs(latest.lead)>=2;
  }
  const api={evaluate,eligible};
