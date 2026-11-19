@@ -46,3 +46,5 @@ jobs:
         run: node tests/round-robin-overlapping-settlement.test.js
       - name: Full 18-hole shared-score simulation
         run: node tests/round-robin-full-round.test.js
+      - name: Staged SQL security contract
+        run: node tests/round-robin-sql-contract.test.js
