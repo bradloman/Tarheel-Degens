@@ -40,3 +40,5 @@ jobs:
         run: node tests/round-robin-press-controls.test.js
       - name: Press after closed base Nassau
         run: node tests/round-robin-closed-base.test.js
+      - name: Independent simultaneous bets
+        run: node tests/round-robin-independent-bets.test.js
