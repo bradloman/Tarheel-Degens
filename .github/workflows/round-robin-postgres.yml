@@ -50,3 +50,6 @@ jobs:
 
       - name: Exercise press activation and undo RPCs
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/round-robin-rpc-integration.sql
+
+      - name: Exercise independent re-presses and undo locks
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/round-robin-rpc-repress.sql
