@@ -15,6 +15,7 @@ assert.equal(press.eligible(bc2,'front'),false);
 const p=press.evaluate(ab2,[{segment:'front',startHole:3}])[0];
 assert.equal(p.lead,0);
 assert.equal(p.closed,false);
-assert.equal(press.eligible(ab2,'front',[{segment:'front',startHole:3}]),true,'Original open Nassau can still be pressed');
+assert.equal(press.eligible(ab2,'front',[{segment:'front',startHole:3}]),false,'Already activated from base for hole 3');
+assert.equal(press.eligible(ab2,'front',[{segment:'front',startHole:3,parentId:'other'}]),true,'Other parent does not block original bet');
 assert.equal(press.eligible(ab2,'front',[{segment:'front',startHole:3,parentId:null}]),false,'Same parent cannot be pressed twice for hole 3');
 console.log('Round Robin Nassau press tests passed');
