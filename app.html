@@ -709,7 +709,7 @@ function validateSetupTeams(){
 function updateMatchPlayerSelection(){
  const n=el('matchPlayerChecklist').querySelectorAll('input[data-match-player]:checked').length;
  el('matchPlayerSelectionStatus').textContent=n+' player'+(n===1?'':'s')+' selected · choose 2–'+(['quota','tilt'].includes(el('gameType').value)?12:4);
- el('playerCount').value=String(Math.min(['quota','tilt'].includes(el('gameType').value)?12:4,Math.max(2,n)));if(typeof updateQuotaSetup==='function')updateQuotaSetup();updateSetupTeams();
+ el('playerCount').value=String(el('gameType').value==='round_robin'?3:Math.min(['quota','tilt'].includes(el('gameType').value)?12:4,Math.max(2,n)));if(typeof updateQuotaSetup==='function')updateQuotaSetup();updateSetupTeams();
 }
 let registeredDirectoryPlayers=[],invitedDirectoryPlayers=[];
 function renderCombinedDirectory(){
@@ -1518,7 +1518,7 @@ function renderRoundRobinMatchups(){
    return '<div style="margin:4px 0;font-size:13px"><strong>'+segment+'</strong>: '+(options.length?options.map(o=>'<button type="button" data-rr-press="'+segment+'" data-rr-parent="'+safe(o.parentId||'')+'" '+(!roundRobinPressRpcEnabled||posted()?'disabled':'')+' title="'+(!roundRobinPressRpcEnabled?'Database activation pending':'Press this eligible bet')+'">'+(o.parentId?'Re-press':'Press')+' from hole '+o.startHole+'</button>').join(' '):'No new press')+'</div>';
   }).join('');
   const activePresses=pairPresses.map(p=>'<div style="font-size:13px;margin:3px 0">'+safe(p.segment)+' press · hole '+p.startHole+(p.parentId?' · re-press':'')+' <button type="button" data-rr-undo="'+safe(p.id)+'" '+(!roundRobinPressRpcEnabled||posted()||m.holes.some(h=>h.played&&h.hole>=p.startHole)||pairPresses.some(c=>c.parentId===p.id)?'disabled':'')+'>Undo</button></div>').join('');
-  box.innerHTML='<h3>Round Robin Nassau matchups</h3><p class="muted">Shared gross scores · independent net match results</p><div style="display:flex;gap:6px;flex-wrap:wrap">'+buttons+'</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+['front','back','overall'].map(status).join('')+'</div><div style="margin-top:8px"><strong>Press opportunities</strong><div>'+pressSummary+'</div><small>Press activation and undo will be enabled after the database migration is verified.</small></div>';
+  box.innerHTML='<h3>Round Robin Nassau matchups</h3><p class="muted">Shared gross scores · independent net match results</p><div style="display:flex;gap:6px;flex-wrap:wrap">'+buttons+'</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+['front','back','overall'].map(status).join('')+'</div><div style="margin-top:8px"><strong>Press opportunities</strong><div>'+pressSummary+'</div><small>Presses are independent for each matchup. A press begins on the next hole.</small></div>';
   box.querySelectorAll('[data-rr-pair]').forEach(b=>b.addEventListener('click',()=>{roundRobinSelectedPair=Number(b.dataset.rrPair);renderRoundRobinMatchups()}));
   if(roundRobinPressRpcEnabled&&user&&match){
    const controls=RoundRobinPressControls.create(db,match.id,user.id,refresh);
@@ -1645,7 +1645,7 @@ function enableScoreEntryAdvance(){
  });
 }
 function hasUnsavedScores(){return [...el('scoreRows').querySelectorAll('input[data-hole]')].some(input=>{const existing=(input.dataset.guest==='true'?guestScores:scores).find(x=>x.hole_number===Number(input.dataset.hole)&&(input.dataset.guest==='true'?x.guest_id:x.player_id)===input.dataset.player);return input.value!==String(existing?.gross_strokes??'')})}
-function changeNine(n){if(n===activeNine)return;if(hasUnsavedScores()&&!confirm('Some scores are not saved yet. Switch nines anyway?'))return;activeNine=n;render()}
+function changeNine(n){if(n===activeNine)return;if(hasUnsavedScores()&&!confirm('Some scores are not saved yet. Switch nines anyway?'))return;activeNine=n;render();if(match?.game_type==='round_robin')renderRoundRobinMatchups()}
 el('frontNine').onclick=()=>changeNine(1);
 el('backNine').onclick=()=>changeNine(2);
 const posted=()=>['posted','completed','finalized'].includes(String(match?.status||'').toLowerCase());
