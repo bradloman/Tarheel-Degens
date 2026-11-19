@@ -30,7 +30,7 @@ function create(client,matchId,a,b){
    if(!userId)throw Error('Authenticated user required');
    const {data,error}=await client.rpc('activate_round_robin_press',{p_match:matchId,p_player_a:key.player_a,p_player_b:key.player_b,p_segment:segment,p_start:startHole,p_parent:parentId});
    if(error)throw error;
-   return {id:data,segment,startHole,playerA:key.player_a,playerB:key.player_b};
+   return {id:data,segment,startHole,parentId,playerA:key.player_a,playerB:key.player_b};
   },
   async undo(pressId,userId){
    if(!pressId||!userId)throw Error('Press and user required');
