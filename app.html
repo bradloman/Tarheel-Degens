@@ -1364,7 +1364,7 @@ function renderRoundRobinMatchups(){
    if(index>=0)collection.splice(index,1);
    if(value!==''&&Number.isInteger(n)&&n>=1&&n<=30)collection.push({hole_number:hole,[key]:id,gross_strokes:n});
   });
-  const matchups=RoundRobinAdapter.calculate(roster,teeHoles,pendingScores,pendingGuests,courseHcp);
+  const matchups=RoundRobinAdapter.calculate(roster.map(p=>({...p,course_handicap:p.handicap})),teeHoles,pendingScores,pendingGuests,courseHcp);
   const names=Object.fromEntries(roster.map(p=>[p.id,p.name]));
   roundRobinSelectedPair=Math.min(roundRobinSelectedPair,2);
   const buttons=matchups.map((m,i)=>'<button type="button" class="'+(i===roundRobinSelectedPair?'':'secondary')+'" data-rr-pair="'+i+'" aria-pressed="'+(i===roundRobinSelectedPair)+'">'+safe(shortName(names[m.players[0]]))+' vs '+safe(shortName(names[m.players[1]]))+'</button>').join(' ');
