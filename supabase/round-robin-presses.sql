@@ -119,4 +119,5 @@ begin
 end $$;
 revoke all on function public.activate_round_robin_press(uuid,uuid,uuid,text,integer,uuid) from public,anon,authenticated;
 revoke all on function public.undo_round_robin_press(uuid) from public,anon;
+grant execute on function public.activate_round_robin_press(uuid,uuid,uuid,text,integer,uuid) to authenticated;
 grant execute on function public.undo_round_robin_press(uuid) to authenticated;
