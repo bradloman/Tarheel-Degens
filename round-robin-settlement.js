@@ -12,6 +12,7 @@ function settle(matches,pressesByMatch={},stake=5){
  const bets=[];
  const pressApi=typeof module!=='undefined'&&module.exports?require('./round-robin-presses.js'):root.RoundRobinPresses;
  for(const match of matches){
+  if(match.holes.length!==18||match.holes.some(h=>!h.played))throw Error('Cannot settle unfinished round');
   const [a,b]=match.players;
   const key=[a,b].join('|');
   for(const segment of segments){
