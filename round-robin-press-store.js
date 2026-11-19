@@ -28,17 +28,16 @@ function create(client,matchId,a,b){
    const [min,max]=segment==='front'?[2,9]:segment==='back'?[11,18]:[2,18];
    if(!Number.isInteger(startHole)||startHole<min||startHole>max)throw Error('Invalid press start');
    if(!userId)throw Error('Authenticated user required');
-   const {data,error}=await table().insert({...key,segment,start_hole:startHole,created_by:userId}).select('*').single();
+   const {data,error}=await client.rpc('activate_round_robin_press',{p_match:matchId,p_player_a:key.player_a,p_player_b:key.player_b,p_segment:segment,p_start:startHole});
    if(error)throw error;
-   return normalize(data);
+   return {id:data,segment,startHole,playerA:key.player_a,playerB:key.player_b};
   },
   async undo(pressId,userId){
    if(!pressId||!userId)throw Error('Press and user required');
    // Server authorization and hole-based undo cutoff must be enforced by the database.
-   const {data,error}=await table().update({undone_at:new Date().toISOString(),undone_by:userId})
-    .match({...key,id:pressId}).is('undone_at',null).select('*').single();
+   const {error}=await client.rpc('undo_round_robin_press',{p_id:pressId});
    if(error)throw error;
-   return normalize(data);
+   return {id:pressId,undone:true};
   }
  };
 }
