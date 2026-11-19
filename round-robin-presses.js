@@ -32,9 +32,9 @@
   if(last<range[0]||last>=range[1])return [];
   const bets=[{id:null,segment,startHole:range[0],...match[segment]},
    ...evaluate(match,existing.filter(p=>p.segment===segment))];
-  return bets.filter(b=>!b.closed&&Math.abs(b.lead)>=2).map(b=>({
-   parentId:b.id??null,segment,startHole:last+1,lead:b.lead
-  }));
+  return bets.filter(b=>!b.closed&&Math.abs(b.lead)>=2)
+   .filter(b=>!existing.some(p=>p.segment===segment&&(p.parentId??null)===(b.id??null)&&p.startHole===last+1))
+   .map(b=>({parentId:b.id??null,segment,startHole:last+1,lead:b.lead}));
  }
  function eligible(match,segment,existing=[]){
   return opportunities(match,segment,existing).length>0;
