@@ -42,3 +42,5 @@ jobs:
         run: node tests/round-robin-closed-base.test.js
       - name: Independent simultaneous bets
         run: node tests/round-robin-independent-bets.test.js
+      - name: Overlapping press settlement
+        run: node tests/round-robin-overlapping-settlement.test.js
