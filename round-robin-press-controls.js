@@ -14,18 +14,19 @@ function create(client,matchId,userId,reload){
   const rows=await list(match);
   return root.RoundRobinPresses.eligible(match,segment,rows);
  }
- async function activate(match,segment){
+ async function activate(match,segment,parentId=null){
   if(busy)throw Error('Press action in progress');
   busy=true;
   try{
    const rows=await list(match);
-   if(!root.RoundRobinPresses.eligible(match,segment,rows))throw Error('Press is not eligible');
+   const options=root.RoundRobinPresses.opportunities(match,segment,rows);
+   if(!options.some(o=>o.parentId===parentId))throw Error('Selected bet is not eligible');
    let last=0;
    for(const hole of match.holes){if(!hole.played)break;last=hole.hole;}
    if(last<1||last>=18)throw Error('No next hole');
    const start=last+1;
    const [a,b]=match.players;
-   const result=await root.RoundRobinPressStore.create(client,matchId,a,b).add(segment,start,userId);
+   const result=await root.RoundRobinPressStore.create(client,matchId,a,b).add(segment,start,userId,parentId);
    await reload();
    return result;
   }finally{busy=false}
