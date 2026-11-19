@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');
+const rr=require('../round-robin-nassau.js');
+const press=require('../round-robin-presses.js');
+const players=[{id:'A',courseHandicap:0},{id:'B',courseHandicap:0},{id:'C',courseHandicap:0}];
+const holes=Array.from({length:18},(_,i)=>({number:i+1,strokeIndex:i+1,scores:i<7?{A:3,B:5,C:5}:{}}));
+let match=rr.calculate(players,holes)[0];
+assert.equal(match.front.closed,true);
+assert.equal(press.eligible(match,'front'),false);
+const existing=[{segment:'front',startHole:6}];
+assert.equal(press.eligible(match,'front',existing),true,'Active press can be re-pressed after base Nassau closes');
+holes[7].scores={A:3,B:5,C:5};
+holes[8].scores={A:3,B:5,C:5};
+match=rr.calculate(players,holes)[0];
+assert.equal(press.eligible(match,'front',existing),false,'No press after front nine ends');
+console.log('Closed base Nassau press continuation passed');

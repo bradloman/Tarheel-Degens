@@ -1,0 +1,62 @@
+name: Round Robin PostgreSQL migration smoke test
+on:
+  push:
+    branches: [feature/round-robin-nassau]
+    paths:
+      - 'supabase/round-robin-presses.sql'
+      - 'supabase/round-robin-finalization.sql'
+      - 'tests/sql/**'
+      - '.github/workflows/round-robin-postgres.yml'
+  workflow_dispatch:
+jobs:
+  compile-migration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: round_robin_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: test-only
+      PGDATABASE: round_robin_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create isolated fixture schema
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/round-robin-fixture.sql
+      - name: Compile staged migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/round-robin-presses.sql
+      - name: Verify table, functions, and RLS
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF to_regclass('public.match_round_robin_presses') IS NULL THEN RAISE EXCEPTION 'Missing presses table'; END IF;
+            IF to_regprocedure('public.activate_round_robin_press(uuid,uuid,uuid,text,integer,uuid)') IS NULL THEN RAISE EXCEPTION 'Missing activation function'; END IF;
+            IF to_regprocedure('public.undo_round_robin_press(uuid)') IS NULL THEN RAISE EXCEPTION 'Missing undo function'; END IF;
+            IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.match_round_robin_presses'::regclass) THEN RAISE EXCEPTION 'RLS disabled'; END IF;
+            IF has_function_privilege('authenticated','public.activate_round_robin_press(uuid,uuid,uuid,text,integer,uuid)','EXECUTE') THEN RAISE EXCEPTION 'Activation unexpectedly enabled'; END IF;
+          END $$;
+          SQL
+
+      - name: Exercise press activation and undo RPCs
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/round-robin-rpc-integration.sql
+
+      - name: Exercise independent re-presses and undo locks
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/round-robin-rpc-repress.sql
+
+      - name: Compile atomic Round Robin finalization
+        run: psql -v ON_ERROR_STOP=1 -f supabase/round-robin-finalization.sql
+
+      - name: Exercise atomic finalization and payouts
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/round-robin-finalization.sql

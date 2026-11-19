@@ -1,0 +1,50 @@
+name: Round Robin Nassau tests
+on:
+  push:
+    branches: [feature/round-robin-nassau]
+  pull_request:
+    paths:
+      - 'round-robin-*.js'
+      - 'tests/round-robin-*.test.js'
+      - '.github/workflows/round-robin-tests.yml'
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Scoring
+        run: node tests/round-robin-nassau.test.js
+      - name: Presses
+        run: node tests/round-robin-presses.test.js
+      - name: Shared score storage adapter
+        run: node tests/round-robin-adapter.test.js
+      - name: Settlement
+        run: node tests/round-robin-settlement.test.js
+
+      - name: Press persistence RPC adapter
+        run: node tests/round-robin-press-store.test.js
+      - name: Matchup and re-press scenarios
+        run: node tests/round-robin-scenarios.test.js
+      - name: Saved course handicap adapter
+        run: node tests/round-robin-saved-handicap.test.js
+      - name: Read-only match loader
+        run: node tests/round-robin-loader.test.js
+      - name: Shared scorecard view
+        run: node tests/round-robin-scorecard-view.test.js
+      - name: Shared score entry
+        run: node tests/round-robin-score-entry.test.js
+      - name: Press controls
+        run: node tests/round-robin-press-controls.test.js
+      - name: Press after closed base Nassau
+        run: node tests/round-robin-closed-base.test.js
+      - name: Independent simultaneous bets
+        run: node tests/round-robin-independent-bets.test.js
+      - name: Overlapping press settlement
+        run: node tests/round-robin-overlapping-settlement.test.js
+      - name: Full 18-hole shared-score simulation
+        run: node tests/round-robin-full-round.test.js
+      - name: Staged SQL security contract
+        run: node tests/round-robin-sql-contract.test.js
