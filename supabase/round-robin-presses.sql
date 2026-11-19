@@ -41,6 +41,8 @@ begin
  if not (public.is_match_member(p_match) or public.is_match_owner(p_match)) then raise exception 'Not authorized'; end if;
  if p_player_a is null or p_player_b is null or p_player_a=p_player_b then raise exception 'Invalid matchup'; end if;
  v_a:=least(p_player_a,p_player_b);v_b:=greatest(p_player_a,p_player_b);
+ if (select count(*) from public.match_players where match_id=p_match)<>3 then raise exception 'Round Robin requires three registered match players'; end if;
+ if exists(select 1 from public.guest_hole_scores where match_id=p_match) then raise exception 'Guest scorecards are not supported for this press RPC'; end if;
  if not exists(select 1 from public.match_players where match_id=p_match and player_id=v_a)
  or not exists(select 1 from public.match_players where match_id=p_match and player_id=v_b)
  then raise exception 'Players not in this match'; end if;
@@ -56,8 +58,8 @@ begin
          where match_id=p_match and hole_number=prior)<>3
  );
  if p_start<>v_last+1 then raise exception 'Press must start on next unscored hole'; end if;
- if exists(select 1 from public.hole_scores where match_id=p_match and hole_number=p_start)
- then raise exception 'Starting hole already scored'; end if;
+ if exists(select 1 from public.hole_scores where match_id=p_match and hole_number>=p_start)
+ then raise exception 'Press cannot start with saved scores on or after its start hole'; end if;
  -- The relevant active thread is the latest press for this matchup/segment.
  v_start:=case when p_segment='back' then 10 else 1 end;
  v_end:=case when p_segment='front' then 9 else 18 end;
