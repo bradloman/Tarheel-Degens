@@ -7,6 +7,7 @@ create table if not exists public.match_round_robin_presses (
  player_b uuid not null references public.players(id),
  segment text not null check(segment in ('front','back','overall')),
  start_hole integer not null check(start_hole between 2 and 18),
+ parent_press_id uuid references public.match_round_robin_presses(id),
  created_by uuid not null,
  created_at timestamptz not null default now(),
  undone_at timestamptz,
@@ -18,7 +19,7 @@ create table if not exists public.match_round_robin_presses (
   or (segment='overall' and start_hole between 2 and 18))
 );
 create unique index if not exists rr_active_press_unique
- on public.match_round_robin_presses(match_id,player_a,player_b,segment,start_hole)
+ on public.match_round_robin_presses(match_id,player_a,player_b,segment,start_hole,coalesce(parent_press_id,'00000000-0000-0000-0000-000000000000'::uuid))
  where undone_at is null;
 create index if not exists rr_presses_match_idx on public.match_round_robin_presses(match_id);
 alter table public.match_round_robin_presses enable row level security;
@@ -30,9 +31,9 @@ create policy rr_presses_read on public.match_round_robin_presses for select to 
 
 -- Mutations are RPC-only. Client-side eligibility is UX, not an authorization check.
 create or replace function public.activate_round_robin_press(
- p_match uuid,p_player_a uuid,p_player_b uuid,p_segment text,p_start integer)
+ p_match uuid,p_player_a uuid,p_player_b uuid,p_segment text,p_start integer,p_parent uuid default null)
 returns uuid language plpgsql security definer set search_path='' as $$
-declare m public.matches%rowtype; v_id uuid; v_a uuid; v_b uuid; v_last integer; v_start integer; v_end integer; v_lead integer:=0; v_current integer:=0; v_prev integer:=0; v_ch_a integer; v_ch_b integer; v_low integer; v_si integer; v_gross_a integer; v_gross_b integer; v_net_a integer; v_net_b integer; v_h integer; v_prev_start integer; v_prev_lead integer:=0;
+declare m public.matches%rowtype; v_id uuid; v_a uuid; v_b uuid; v_last integer; v_start integer; v_end integer; v_lead integer:=0; v_current integer:=0; v_prev integer:=0; v_ch_a integer; v_ch_b integer; v_low integer; v_si integer; v_gross_a integer; v_gross_b integer; v_net_a integer; v_net_b integer; v_h integer; v_prev_start integer; v_prev_lead integer:=0; v_parent public.match_round_robin_presses%rowtype;
 begin
  if (select auth.uid()) is null then raise exception 'Authentication required'; end if;
  select * into m from public.matches where id=p_match for update;
@@ -60,13 +61,15 @@ begin
  if p_start<>v_last+1 then raise exception 'Press must start on next unscored hole'; end if;
  if exists(select 1 from public.hole_scores where match_id=p_match and hole_number>=p_start)
  then raise exception 'Press cannot start with saved scores on or after its start hole'; end if;
- -- The relevant active thread is the latest press for this matchup/segment.
+ -- A press belongs to exactly one independently evaluated base bet or parent press.
  v_start:=case when p_segment='back' then 10 else 1 end;
  v_end:=case when p_segment='front' then 9 else 18 end;
- select max(start_hole) into v_prev_start from public.match_round_robin_presses
- where match_id=p_match and player_a=v_a and player_b=v_b
- and segment=p_segment and undone_at is null;
- if v_prev_start is not null then v_start:=v_prev_start; end if;
+ if p_parent is not null then
+  select * into v_parent from public.match_round_robin_presses where id=p_parent and undone_at is null;
+  if not found or v_parent.match_id<>p_match or v_parent.player_a<>v_a or v_parent.player_b<>v_b
+    or v_parent.segment<>p_segment then raise exception 'Invalid parent press'; end if;
+  v_start:=v_parent.start_hole;
+ end if;
  select course_handicap into v_ch_a from public.match_players where match_id=p_match and player_id=v_a;
  select course_handicap into v_ch_b from public.match_players where match_id=p_match and player_id=v_b;
  if v_ch_a is null or v_ch_b is null then raise exception 'Missing course handicap'; end if;
@@ -85,12 +88,12 @@ begin
   v_net_b:=v_gross_b-((v_ch_b-v_low)/18)-case when v_si<=mod(v_ch_b-v_low,18) then 1 else 0 end;
   v_lead:=v_lead+case when v_net_a<v_net_b then 1 when v_net_b<v_net_a then -1 else 0 end;
  end loop;
- if v_prev_start is not null and v_last<v_prev_start then raise exception 'Previous press has not started'; end if;
+ if p_parent is not null and v_last<v_start then raise exception 'Parent press has not started'; end if;
  if abs(v_lead)<2 then raise exception 'Press requires matchup down at least two holes'; end if;
  if abs(v_lead)>v_end-v_last then raise exception 'Bet already closed'; end if;
  insert into public.match_round_robin_presses
- (match_id,player_a,player_b,segment,start_hole,created_by)
- values(p_match,v_a,v_b,p_segment,p_start,(select auth.uid()))
+ (match_id,player_a,player_b,segment,start_hole,parent_press_id,created_by)
+ values(p_match,v_a,v_b,p_segment,p_start,p_parent,(select auth.uid()))
  returning id into v_id;
  return v_id;
 end $$;
@@ -107,13 +110,13 @@ begin
  if not public.is_match_owner(p.match_id) then raise exception 'Only the match owner can undo'; end if;
  if exists(select 1 from public.match_round_robin_presses later
    where later.match_id=p.match_id and later.player_a=p.player_a and later.player_b=p.player_b
-   and later.segment=p.segment and later.undone_at is null and later.start_hole>p.start_hole)
+   and later.segment=p.segment and later.undone_at is null and later.parent_press_id=p.id)
  then raise exception 'Undo the latest re-press first'; end if;
  if exists(select 1 from public.hole_scores where match_id=p.match_id and hole_number>=p.start_hole)
  or exists(select 1 from public.guest_hole_scores where match_id=p.match_id and hole_number>=p.start_hole)
  then raise exception 'Press locked: scores already saved on or after its start hole'; end if;
  update public.match_round_robin_presses set undone_at=now(),undone_by=(select auth.uid()) where id=p_id;
 end $$;
-revoke all on function public.activate_round_robin_press(uuid,uuid,uuid,text,integer) from public,anon,authenticated;
+revoke all on function public.activate_round_robin_press(uuid,uuid,uuid,text,integer,uuid) from public,anon,authenticated;
 revoke all on function public.undo_round_robin_press(uuid) from public,anon;
 grant execute on function public.undo_round_robin_press(uuid) to authenticated;
