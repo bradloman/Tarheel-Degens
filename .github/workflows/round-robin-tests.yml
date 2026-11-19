@@ -1,10 +1,12 @@
 name: Round Robin Nassau tests
 on:
   push:
-    branches: [feature/round-robin-nassau]
+    branches: [feature/round-robin-nassau, integration/round-robin-nassau-production]
   pull_request:
     paths:
       - 'round-robin-*.js'
+      - 'app.html'
+      - 'supabase/round-robin-*.sql'
       - 'tests/round-robin-*.test.js'
       - '.github/workflows/round-robin-tests.yml'
 jobs:
