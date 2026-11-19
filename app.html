@@ -1539,6 +1539,7 @@ try{
 if(!match)throw Error('Open a match first.');
 
 if(posted())throw Error('This match is already posted.');
+if(match.game_type==='round_robin')throw Error('Round Robin posting is not enabled until all three Nassau matchups and presses can be settled and recorded atomically.');
 if(savingHoles.size||saveTimers.size)throw Error('Some holes are still saving. Wait for the save confirmation and try again.');
 if(hasUnsavedScores())throw Error('The visible scores have not finished saving. Wait for the save confirmation and try again.');
 const id=match.id,holes=Number(match.hole_count);
