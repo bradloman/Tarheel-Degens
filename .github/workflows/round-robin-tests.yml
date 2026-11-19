@@ -44,3 +44,5 @@ jobs:
         run: node tests/round-robin-independent-bets.test.js
       - name: Overlapping press settlement
         run: node tests/round-robin-overlapping-settlement.test.js
+      - name: Full 18-hole shared-score simulation
+        run: node tests/round-robin-full-round.test.js
