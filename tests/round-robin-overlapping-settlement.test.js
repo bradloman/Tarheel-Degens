@@ -10,7 +10,8 @@ const presses={
 };
 const result=settle(matches,presses,10);
 assert.equal(result.bets.length,13,'Nine base bets plus four independent presses');
-assert.deepEqual(result.totals,{A:-10,B:10,C:0});
+assert.deepEqual(result.totals,{A:0,B:-10,C:10});
+assert.deepEqual(result.bets.filter(b=>b.type==='press').map(b=>b.amountA),[10,10,-10,-10]);
 assert.equal(Object.values(result.totals).reduce((a,b)=>a+b,0),0);
 assert.equal(result.bets.filter(b=>b.type==='press').length,4);
 assert.equal(result.bets.filter(b=>b.type==='press'&&b.amountA<0).length,2);
