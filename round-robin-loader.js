@@ -32,7 +32,7 @@ async function load(client,matchId){
   if(!pair.every(id=>players.some(p=>p.id===id))||pair[0]===pair[1])throw Error('Invalid saved press pairing');
   const key=pair.join('|');
   (pressesByMatch[key]||(pressesByMatch[key]=[])).push({
-   id:row.id,segment:row.segment,startHole:row.start_hole
+   id:row.id,segment:row.segment,startHole:row.start_hole,parentId:row.parent_press_id??null
   });
  }
  return {match,players:data.players,holes:data.holes,matches,pressesByMatch};
