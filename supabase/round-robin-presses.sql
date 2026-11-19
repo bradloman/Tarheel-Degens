@@ -85,6 +85,7 @@ begin
   v_net_b:=v_gross_b-((v_ch_b-v_low)/18)-case when v_si<=mod(v_ch_b-v_low,18) then 1 else 0 end;
   v_lead:=v_lead+case when v_net_a<v_net_b then 1 when v_net_b<v_net_a then -1 else 0 end;
  end loop;
+ if v_prev_start is not null and v_last<v_prev_start then raise exception 'Previous press has not started'; end if;
  if abs(v_lead)<2 then raise exception 'Press requires matchup down at least two holes'; end if;
  if abs(v_lead)>v_end-v_last then raise exception 'Bet already closed'; end if;
  insert into public.match_round_robin_presses
@@ -104,6 +105,10 @@ begin
  select * into m from public.matches where id=p.match_id for update;
  if m.status<>'active' or m.game_type<>'round_robin' then raise exception 'Match is not active'; end if;
  if not public.is_match_owner(p.match_id) then raise exception 'Only the match owner can undo'; end if;
+ if exists(select 1 from public.match_round_robin_presses later
+   where later.match_id=p.match_id and later.player_a=p.player_a and later.player_b=p.player_b
+   and later.segment=p.segment and later.undone_at is null and later.start_hole>p.start_hole)
+ then raise exception 'Undo the latest re-press first'; end if;
  if exists(select 1 from public.hole_scores where match_id=p.match_id and hole_number>=p.start_hole)
  or exists(select 1 from public.guest_hole_scores where match_id=p.match_id and hole_number>=p.start_hole)
  then raise exception 'Press locked: scores already saved on or after its start hole'; end if;
