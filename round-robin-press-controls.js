@@ -21,10 +21,9 @@ function create(client,matchId,userId,reload){
    const rows=await list(match);
    const options=root.RoundRobinPresses.opportunities(match,segment,rows);
    if(!options.some(o=>o.parentId===parentId))throw Error('Selected bet is not eligible');
-   let last=0;
-   for(const hole of match.holes){if(!hole.played)break;last=hole.hole;}
-   if(last<1||last>=18)throw Error('No next hole');
-   const start=last+1;
+   const selected=options.find(o=>o.parentId===parentId);
+   if(!selected)throw Error('Selected bet is not eligible');
+   const start=selected.startHole;
    const [a,b]=match.players;
    const result=await root.RoundRobinPressStore.create(client,matchId,a,b).add(segment,start,userId,parentId);
    await reload();
