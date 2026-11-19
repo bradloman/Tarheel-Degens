@@ -20,8 +20,9 @@ function create(client,matchId,userId,reload){
   try{
    const rows=await list(match);
    if(!root.RoundRobinPresses.eligible(match,segment,rows))throw Error('Press is not eligible');
-   const last=match.overall.last;
-   if(last<0||last>=18)throw Error('No next hole');
+   let last=0;
+   for(const hole of match.holes){if(!hole.played)break;last=hole.hole;}
+   if(last<1||last>=18)throw Error('No next hole');
    const start=last+1;
    const [a,b]=match.players;
    const result=await root.RoundRobinPressStore.create(client,matchId,a,b).add(segment,start,userId);
@@ -36,7 +37,7 @@ function create(client,matchId,userId,reload){
    const rows=await list(match);
    const row=rows.find(p=>p.id===pressId);
    if(!row)throw Error('Press not found in selected matchup');
-   if(match.overall.last>=row.startHole)throw Error('Press locked after next hole saved');
+   if(match.holes.some(h=>h.hole>=row.startHole&&h.played))throw Error('Press locked after next hole saved');
    const [a,b]=match.players;
    const result=await root.RoundRobinPressStore.create(client,matchId,a,b).undo(pressId,userId);
    await reload();
