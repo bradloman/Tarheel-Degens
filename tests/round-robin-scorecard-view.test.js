@@ -27,7 +27,7 @@ function collect(node){return [node.textContent,...node.children.flatMap(collect
  assert.match(collect(root),/Active presses: front \(hole 2\)/);
  view.select(1);
  assert.match(collect(root),/A vs C/);
- assert.match(collect(root),/Active presses: $/);
+ assert.equal(root.children[2].textContent,'Active presses: ');
  assert.equal(root.children.at(-1).children.length,19);
  console.log('Round Robin scorecard view tests passed');
 })().catch(e=>{console.error(e);process.exitCode=1});
