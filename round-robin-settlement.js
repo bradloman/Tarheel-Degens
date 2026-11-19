@@ -14,7 +14,7 @@ function settle(matches,pressesByMatch={},stake=5){
  for(const match of matches){
   if(match.holes.length!==18||match.holes.some(h=>!h.played))throw Error('Cannot settle unfinished round');
   const [a,b]=match.players;
-  const key=[a,b].join('|');
+  const key=[a,b].sort().join('|');
   for(const segment of segments){
    const result=match[segment];
    if(!result.closed)throw Error('Cannot settle unfinished '+key+' '+segment);
