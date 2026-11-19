@@ -1350,7 +1350,7 @@ let roundRobinSelectedPair=0;
 let roundRobinSavedPresses=[];
 // Press RPCs are deliberately gated until the staged migration is deployed and verified.
 // Switch to true only in the reviewed production deployment after all Round Robin SQL and RPC grants are applied.
-const roundRobinPressRpcEnabled=false;
+const roundRobinPressRpcEnabled=true;
 
 function renderRoundRobinMatchups(){
  const box=el('roundRobinMatchups');if(!box)return;
