@@ -47,3 +47,6 @@ jobs:
             IF has_function_privilege('authenticated','public.activate_round_robin_press(uuid,uuid,uuid,text,integer,uuid)','EXECUTE') THEN RAISE EXCEPTION 'Activation unexpectedly enabled'; END IF;
           END $$;
           SQL
+
+      - name: Exercise press activation and undo RPCs
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/round-robin-rpc-integration.sql
