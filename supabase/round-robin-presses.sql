@@ -75,8 +75,8 @@ begin
  if v_ch_a is null or v_ch_b is null then raise exception 'Missing course handicap'; end if;
  v_low:=least(v_ch_a,v_ch_b);
  for v_h in v_start..v_last loop
-  select stroke_index into v_si from public.course_holes
-   where tee_id=m.tee_id and hole_number=v_h;
+  select stroke_index into v_si from public.match_hole_strokes
+   where match_id=p_match and hole_number=v_h;
   select gross_strokes into v_gross_a from public.hole_scores
    where match_id=p_match and player_id=v_a and hole_number=v_h;
   select gross_strokes into v_gross_b from public.hole_scores
