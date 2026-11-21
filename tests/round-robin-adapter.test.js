@@ -11,4 +11,15 @@ assert.equal(snapshot.holes[0].scores.C,4);
 assert.deepEqual(adapter.calculate(roster,tee,scores,guests,x=>x).map(m=>m.strokes),[[0,4],[0,12],[0,8]]);
 guests.pop();
 assert.equal(adapter.snapshot(roster,tee,scores,guests,x=>x).holes[17].scores.C,undefined);
+
+const identities=adapter.participantIdentities([
+ {id:'same-id',guest:false},
+ {id:'same-id',guest:true,directory_entry_id:'directory-record'},
+ {id:'third',guest:true,directory_entry_id:'another-directory-record'}
+]);
+assert.deepEqual(identities.map(x=>x.key),['registered:same-id','guest:same-id','guest:third']);
+assert.equal(identities[1].directoryEntryId,'directory-record');
+assert.throws(()=>adapter.participantIdentities([
+ {id:'A',guest:false},{id:'A',guest:false},{id:'C',guest:true}
+]),/three distinct participants/);
 console.log('Round Robin Nassau score storage adapter tests passed');
