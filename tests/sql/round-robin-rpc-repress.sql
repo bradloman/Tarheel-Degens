@@ -93,7 +93,7 @@ BEGIN
  EXCEPTION WHEN raise_exception THEN
   IF SQLERRM<>'Bet already closed' THEN RAISE; END IF;
  END;
-END $;
+END $$;
 
 ROLLBACK;
 
