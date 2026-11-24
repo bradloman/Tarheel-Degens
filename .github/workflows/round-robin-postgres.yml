@@ -1,12 +1,14 @@
 name: Round Robin PostgreSQL migration smoke test
 on:
   push:
-    branches: [feature/round-robin-nassau]
+    branches: [feature/round-robin-nassau, integration/round-robin-nassau-production]
     paths:
       - 'supabase/round-robin-presses.sql'
       - 'supabase/round-robin-finalization.sql'
       - 'tests/sql/**'
       - '.github/workflows/round-robin-postgres.yml'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 jobs:
   compile-migration:
