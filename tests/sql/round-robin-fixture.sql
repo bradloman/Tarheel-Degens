@@ -8,7 +8,7 @@ create table public.matches(
 );
 create table public.match_players(match_id uuid,player_id uuid,course_handicap integer);
 create table public.hole_scores(match_id uuid,player_id uuid,hole_number integer,gross_strokes integer);
-create table public.guest_hole_scores(match_id uuid,hole_number integer);
+create table public.guest_hole_scores(match_id uuid,guest_id uuid,hole_number integer,gross_strokes integer);
 create table public.course_holes(tee_id uuid,hole_number integer,stroke_index integer);
 create function public.is_match_member(uuid) returns boolean language sql stable as $$select false$$;
 create function public.is_match_owner(uuid) returns boolean language sql stable as $$select false$$;
@@ -17,5 +17,5 @@ do $$begin
  if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
 end$$;
 
-create table public.guest_players(match_id uuid,id uuid);
+create table public.guest_players(match_id uuid,id uuid,course_handicap integer,directory_entry_id uuid);
 create table public.match_hole_strokes(match_id uuid,hole_number integer,stroke_index integer);
