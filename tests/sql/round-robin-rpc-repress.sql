@@ -12,8 +12,8 @@ INSERT INTO public.matches(id,game_type,status,player_count,hole_count,tee_id)
  VALUES ('44444444-4444-4444-8444-444444444444','round_robin','active',3,18,'55555555-5555-4555-8555-555555555555');
 INSERT INTO public.match_players(match_id,player_id,course_handicap)
  SELECT '44444444-4444-4444-8444-444444444444',id,0 FROM public.players;
-INSERT INTO public.course_holes(tee_id,hole_number,stroke_index)
- SELECT '55555555-5555-4555-8555-555555555555',h,h FROM generate_series(1,18) h;
+INSERT INTO public.match_hole_strokes(match_id,hole_number,stroke_index)
+ SELECT '44444444-4444-4444-8444-444444444444',h,h FROM generate_series(1,18) h;
 INSERT INTO public.hole_scores(match_id,player_id,hole_number,gross_strokes)
  SELECT '44444444-4444-4444-8444-444444444444',p.id,h,
  CASE WHEN p.id='11111111-1111-4111-8111-111111111111' THEN 3 ELSE 5 END
