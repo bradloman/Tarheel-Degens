@@ -70,7 +70,7 @@ INSERT INTO public.guest_hole_scores(match_id,guest_id,hole_number,gross_strokes
  FROM public.hole_scores WHERE player_id<>'11111111-1111-4111-8111-111111111111';
 DELETE FROM public.hole_scores WHERE player_id<>'11111111-1111-4111-8111-111111111111';
 DELETE FROM public.match_players WHERE player_id<>'11111111-1111-4111-8111-111111111111';
-DO $
+DO $$
 DECLARE m uuid:='44444444-4444-4444-8444-444444444444'; a uuid:='11111111-1111-4111-8111-111111111111'; b uuid:='22222222-2222-4222-8222-222222222222'; c uuid:='33333333-3333-4333-8333-333333333333'; p uuid; q uuid; child uuid;
 BEGIN
  p:=public.activate_round_robin_press(m,a,b,'overall',5,NULL);
