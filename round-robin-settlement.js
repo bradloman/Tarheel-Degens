@@ -36,7 +36,31 @@ function settle(matches,pressesByMatch={},stake=5){
  if(Math.abs(Object.values(rounded).reduce((a,b)=>a+b,0))>0.001)throw Error('Settlement must balance');
  return {totals:rounded,bets};
 }
-const api={settle};
+// Convert persisted bet rows into one record per opponent, using integer cents.
+// Identity resolution and posted-match access belong to the calling records adapter.
+function matchupRecords(rows,participantId){
+ const pairs=new Map();
+ for(const row of rows){
+  const a=row.player_a,b=row.player_b;
+  if(a!==participantId&&b!==participantId)continue;
+  const opponent=a===participantId?b:a, direction=a===participantId?1:-1;
+  const key=JSON.stringify([row.match_id,opponent]);
+  if(!pairs.has(key))pairs.set(key,{matchId:row.match_id,opponentId:opponent,netCents:0,result:null});
+  const record=pairs.get(key), cents=Number(row.amount_a_cents);
+  if(!Number.isSafeInteger(cents))throw Error('Invalid settled cents');
+  record.netCents+=direction*cents;
+  if(row.segment==='overall'&&row.press_id==null){
+   if(record.result!==null)throw Error('Duplicate overall result');
+   const lead=direction*Number(row.lead);
+   if(!Number.isFinite(lead))throw Error('Invalid overall lead');
+   record.result=lead>0?'win':lead<0?'loss':'tie';
+  }
+ }
+ const records=[...pairs.values()];
+ if(records.some(r=>r.result===null))throw Error('Missing overall result');
+ return records;
+}
+const api={settle,matchupRecords};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 else root.RoundRobinSettlement=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
