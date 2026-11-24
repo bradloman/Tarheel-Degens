@@ -6,7 +6,7 @@ const roster=['A','B','C'].map((player_id,i)=>({player_id,course_handicap:[8,12,
 const holes=Array.from({length:18},(_,i)=>({hole_number:i+1,stroke_index:i+1}));
 const scores=['A','B','C'].map(player_id=>({player_id,hole_number:1,gross_strokes:4}));
 const press=[{id:'p1',player_a:'A',player_b:'B',segment:'front',start_hole:2,undone_at:null}];
-const datasets={matches:[{id:'m1',game_type:'round_robin',hole_count:18,player_count:3,tee_id:'tee'}],match_players:roster,course_holes:holes,hole_scores:scores,match_round_robin_presses:press};
+const datasets={matches:[{id:'m1',game_type:'round_robin',hole_count:18,player_count:3,tee_id:'tee'}],match_players:roster,guest_players:[],guest_hole_scores:[],course_holes:holes,hole_scores:scores,match_round_robin_presses:press};
 const client={from(table){return {select(){return this},eq(k,v){this.key=k;this.value=v;return this},is(){return this},async single(){return {data:datasets[table][0],error:null}},then(resolve){return Promise.resolve({data:datasets[table],error:null}).then(resolve)}}}};
 (async()=>{
  const state=await load(client,'m1');
@@ -15,5 +15,25 @@ const client={from(table){return {select(){return this},eq(k,v){this.key=k;this.
  assert.equal(state.pressesByMatch['A|B'].length,1);
  assert.equal(state.pressesByMatch['A|C'],undefined);
  assert.equal(state.holes[0].scores.A,4);
- console.log('Round Robin read-only loader tests passed');
+ datasets.match_players=roster.slice(0,1);
+ datasets.guest_players=[{id:'B',display_name:'Directory B',course_handicap:12,directory_entry_id:'dB'},{id:'C',display_name:'Directory C',course_handicap:20,directory_entry_id:'dC'}];
+ datasets.hole_scores=scores.slice(0,1);
+ datasets.guest_hole_scores=['B','C'].map(guest_id=>({guest_id,hole_number:1,gross_strokes:4}));
+ const mixed=await load(client,'m1');
+ assert.equal(mixed.matches.length,3);
+ assert.deepEqual(mixed.matches.map(m=>m.strokes),[[0,4],[0,12],[0,8]]);
+ assert.equal(mixed.players.find(p=>p.id==='B').name,'Directory B');
+ assert.equal(mixed.holes[0].scores.C,4);
+ assert.equal(mixed.pressesByMatch['A|B'].length,1);
+ assert.equal(mixed.identities[1].directoryEntryId,'dB');
+ datasets.match_players=[];
+ datasets.guest_players.unshift({id:'A',display_name:'Directory A',course_handicap:8,directory_entry_id:'dA'});
+ datasets.guest_hole_scores.unshift({guest_id:'A',hole_number:1,gross_strokes:4});
+ datasets.hole_scores=[];
+ const guests=await load(client,'m1');
+ assert.equal(guests.matches.length,3);
+ assert.deepEqual(guests.holes[0].scores,{A:4,B:4,C:4});
+ datasets.guest_players[2].directory_entry_id='dB';
+ await assert.rejects(load(client,'m1'),/Duplicate directory participant/);
+ console.log('Round Robin registered, mixed and directory-only loader tests passed');
 })().catch(e=>{console.error(e);process.exitCode=1});
