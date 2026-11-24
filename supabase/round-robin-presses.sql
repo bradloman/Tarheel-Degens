@@ -3,8 +3,8 @@
 create table if not exists public.match_round_robin_presses (
  id uuid primary key default gen_random_uuid(),
  match_id uuid not null references public.matches(id) on delete cascade,
- player_a uuid not null references public.players(id),
- player_b uuid not null references public.players(id),
+ player_a uuid not null,
+ player_b uuid not null,
  segment text not null check(segment in ('front','back','overall')),
  start_hole integer not null check(start_hole between 2 and 18),
  parent_press_id uuid references public.match_round_robin_presses(id),
@@ -42,10 +42,10 @@ begin
  if not (public.is_match_member(p_match) or public.is_match_owner(p_match)) then raise exception 'Not authorized'; end if;
  if p_player_a is null or p_player_b is null or p_player_a=p_player_b then raise exception 'Invalid matchup'; end if;
  v_a:=least(p_player_a,p_player_b);v_b:=greatest(p_player_a,p_player_b);
- if (select count(*) from public.match_players where match_id=p_match)<>3 then raise exception 'Round Robin requires three registered match players'; end if;
- if exists(select 1 from public.guest_hole_scores where match_id=p_match) then raise exception 'Guest scorecards are not supported for this press RPC'; end if;
- if not exists(select 1 from public.match_players where match_id=p_match and player_id=v_a)
- or not exists(select 1 from public.match_players where match_id=p_match and player_id=v_b)
+ if (select count(*) from public.match_players where match_id=p_match)+(select count(*) from public.guest_players where match_id=p_match)<>3 then raise exception 'Round Robin requires three match players'; end if;
+ if (select count(distinct id) from (select player_id id from public.match_players where match_id=p_match union all select id from public.guest_players where match_id=p_match) roster)<>3 then raise exception 'Ambiguous participant IDs'; end if;
+ if not (exists(select 1 from public.match_players where match_id=p_match and player_id=v_a) or exists(select 1 from public.guest_players where match_id=p_match and id=v_a))
+ or not (exists(select 1 from public.match_players where match_id=p_match and player_id=v_b) or exists(select 1 from public.guest_players where match_id=p_match and id=v_b))
  then raise exception 'Players not in this match'; end if;
  if not ((p_segment='front' and p_start between 2 and 9) or
          (p_segment='back' and p_start between 11 and 18) or
@@ -55,11 +55,11 @@ begin
  select coalesce(max(h),0) into v_last from generate_series(1,18) h
  where not exists (
   select 1 from generate_series(1,h) prior
-  where (select count(distinct player_id) from public.hole_scores
-         where match_id=p_match and hole_number=prior)<>3
+  where (select count(*) from (select player_id id from public.match_players where match_id=p_match and exists(select 1 from public.hole_scores hs where hs.match_id=p_match and hs.player_id=match_players.player_id and hs.hole_number=prior and hs.gross_strokes between 1 and 30) union all select id from public.guest_players where match_id=p_match and exists(select 1 from public.guest_hole_scores hs where hs.match_id=p_match and hs.guest_id=guest_players.id and hs.hole_number=prior and hs.gross_strokes between 1 and 30)) scored)<>3
  );
  if p_start<>v_last+1 then raise exception 'Press must start on next unscored hole'; end if;
  if exists(select 1 from public.hole_scores where match_id=p_match and hole_number>=p_start)
+ or exists(select 1 from public.guest_hole_scores where match_id=p_match and hole_number>=p_start)
  then raise exception 'Press cannot start with saved scores on or after its start hole'; end if;
  -- A press belongs to exactly one independently evaluated base bet or parent press.
  v_start:=case when p_segment='back' then 10 else 1 end;
@@ -70,23 +70,22 @@ begin
     or v_parent.segment<>p_segment then raise exception 'Invalid parent press'; end if;
   v_start:=v_parent.start_hole;
  end if;
- select course_handicap into v_ch_a from public.match_players where match_id=p_match and player_id=v_a;
- select course_handicap into v_ch_b from public.match_players where match_id=p_match and player_id=v_b;
+ select course_handicap into strict v_ch_a from (select course_handicap from public.match_players where match_id=p_match and player_id=v_a union all select course_handicap from public.guest_players where match_id=p_match and id=v_a) roster;
+ select course_handicap into strict v_ch_b from (select course_handicap from public.match_players where match_id=p_match and player_id=v_b union all select course_handicap from public.guest_players where match_id=p_match and id=v_b) roster;
  if v_ch_a is null or v_ch_b is null then raise exception 'Missing course handicap'; end if;
  v_low:=least(v_ch_a,v_ch_b);
  for v_h in v_start..v_last loop
   select stroke_index into v_si from public.match_hole_strokes
    where match_id=p_match and hole_number=v_h;
-  select gross_strokes into v_gross_a from public.hole_scores
-   where match_id=p_match and player_id=v_a and hole_number=v_h;
-  select gross_strokes into v_gross_b from public.hole_scores
-   where match_id=p_match and player_id=v_b and hole_number=v_h;
+  select gross_strokes into strict v_gross_a from (select gross_strokes from public.hole_scores where match_id=p_match and player_id=v_a and hole_number=v_h union all select gross_strokes from public.guest_hole_scores where match_id=p_match and guest_id=v_a and hole_number=v_h) scores;
+  select gross_strokes into strict v_gross_b from (select gross_strokes from public.hole_scores where match_id=p_match and player_id=v_b and hole_number=v_h union all select gross_strokes from public.guest_hole_scores where match_id=p_match and guest_id=v_b and hole_number=v_h) scores;
   if v_si is null or v_gross_a is null or v_gross_b is null then
    raise exception 'Incomplete hole scoring or stroke index';
   end if;
   v_net_a:=v_gross_a-((v_ch_a-v_low)/18)-case when v_si<=mod(v_ch_a-v_low,18) then 1 else 0 end;
   v_net_b:=v_gross_b-((v_ch_b-v_low)/18)-case when v_si<=mod(v_ch_b-v_low,18) then 1 else 0 end;
   v_lead:=v_lead+case when v_net_a<v_net_b then 1 when v_net_b<v_net_a then -1 else 0 end;
+  if abs(v_lead)>v_end-v_h then raise exception 'Bet already closed'; end if;
  end loop;
  if p_parent is not null and v_last<v_start then raise exception 'Parent press has not started'; end if;
  if abs(v_lead)<2 then raise exception 'Press requires matchup down at least two holes'; end if;
@@ -119,5 +118,5 @@ begin
 end $$;
 revoke all on function public.activate_round_robin_press(uuid,uuid,uuid,text,integer,uuid) from public,anon,authenticated;
 revoke all on function public.undo_round_robin_press(uuid) from public,anon;
-grant execute on function public.activate_round_robin_press(uuid,uuid,uuid,text,integer,uuid) to authenticated;
+-- Activation remains disabled in this draft until mixed-roster integration tests pass.
 grant execute on function public.undo_round_robin_press(uuid) to authenticated;
