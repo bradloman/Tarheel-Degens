@@ -25,7 +25,7 @@ INSERT INTO public.match_round_robin_presses(match_id,player_a,player_b,segment,
  VALUES('44444444-4444-4444-8444-444444444444',
  '11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222',
  'overall',3,'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa');
-DO $
+DO $$
 DECLARE n integer; total bigint; a bigint; b bigint; c bigint;
 BEGIN
  IF public.finalize_round_robin_match('44444444-4444-4444-8444-444444444444')<>'completed' THEN RAISE EXCEPTION 'Finalization failed'; END IF;
@@ -76,7 +76,7 @@ INSERT INTO public.match_round_robin_presses(match_id,player_a,player_b,segment,
  VALUES('44444444-4444-4444-8444-444444444444',
  '11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222',
  'overall',3,'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa');
-DO $
+DO $$
 DECLARE n integer; total bigint; a bigint; b bigint; c bigint;
 BEGIN
  IF public.finalize_round_robin_match('44444444-4444-4444-8444-444444444444')<>'completed' THEN RAISE EXCEPTION 'Finalization failed'; END IF;
@@ -129,7 +129,7 @@ INSERT INTO public.match_round_robin_presses(match_id,player_a,player_b,segment,
  VALUES('44444444-4444-4444-8444-444444444444',
  '11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222',
  'overall',3,'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa');
-DO $
+DO $$
 DECLARE n integer; total bigint; a bigint; b bigint; c bigint;
 BEGIN
  IF public.finalize_round_robin_match('44444444-4444-4444-8444-444444444444')<>'completed' THEN RAISE EXCEPTION 'Finalization failed'; END IF;
@@ -183,7 +183,7 @@ INSERT INTO public.match_round_robin_presses(match_id,player_a,player_b,segment,
  VALUES('44444444-4444-4444-8444-444444444444',
  '11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222',
  'overall',3,'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa');
-DO $
+DO $$
 DECLARE n integer; total bigint; a bigint; b bigint; c bigint;
 BEGIN
  IF public.finalize_round_robin_match('44444444-4444-4444-8444-444444444444')<>'completed' THEN RAISE EXCEPTION 'Finalization failed'; END IF;
