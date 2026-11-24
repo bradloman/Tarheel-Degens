@@ -59,6 +59,42 @@ BEGIN
   IF SQLERRM='Scored parent undo incorrectly allowed' THEN RAISE; END IF;
  END;
 END $$;
+
+-- Repeat with one registered player and two directory-only participants.
+DELETE FROM public.match_round_robin_presses;
+INSERT INTO public.guest_players(match_id,id,course_handicap,directory_entry_id)
+ SELECT match_id,player_id,course_handicap,gen_random_uuid() FROM public.match_players
+ WHERE player_id<>'11111111-1111-4111-8111-111111111111';
+INSERT INTO public.guest_hole_scores(match_id,guest_id,hole_number,gross_strokes)
+ SELECT match_id,player_id,hole_number,CASE WHEN player_id='22222222-2222-4222-8222-222222222222' THEN 4 ELSE 6 END
+ FROM public.hole_scores WHERE player_id<>'11111111-1111-4111-8111-111111111111';
+DELETE FROM public.hole_scores WHERE player_id<>'11111111-1111-4111-8111-111111111111';
+DELETE FROM public.match_players WHERE player_id<>'11111111-1111-4111-8111-111111111111';
+DO $
+DECLARE m uuid:='44444444-4444-4444-8444-444444444444'; a uuid:='11111111-1111-4111-8111-111111111111'; b uuid:='22222222-2222-4222-8222-222222222222'; c uuid:='33333333-3333-4333-8333-333333333333'; p uuid; q uuid; child uuid;
+BEGIN
+ p:=public.activate_round_robin_press(m,a,b,'overall',5,NULL);
+ q:=public.activate_round_robin_press(m,b,c,'overall',5,NULL);
+ IF p=q OR p IS NULL OR q IS NULL THEN RAISE EXCEPTION 'Mixed pair isolation failed'; END IF;
+ PERFORM public.undo_round_robin_press(q);
+ INSERT INTO public.hole_scores VALUES(m,a,5,3),(m,a,6,3);
+ INSERT INTO public.guest_hole_scores(match_id,guest_id,hole_number,gross_strokes) VALUES(m,b,5,4),(m,b,6,4),(m,c,5,6),(m,c,6,6);
+ child:=public.activate_round_robin_press(m,a,b,'overall',7,p);
+ PERFORM public.undo_round_robin_press(child);
+ BEGIN
+  PERFORM public.undo_round_robin_press(p);
+  RAISE EXCEPTION 'Mixed scored press undo incorrectly allowed';
+ EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM NOT LIKE 'Press locked:%' THEN RAISE; END IF;
+ END;
+ BEGIN
+  PERFORM public.activate_round_robin_press(m,b,c,'front',7,NULL);
+  RAISE EXCEPTION 'Closed mixed bet incorrectly pressed';
+ EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM<>'Bet already closed' THEN RAISE; END IF;
+ END;
+END $;
+
 ROLLBACK;
 
 -- Repeat the same independent press assertions with one registered and two directory players.
