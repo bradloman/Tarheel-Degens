@@ -16,6 +16,14 @@ function participantIdentities(roster){
  if(new Set(identities.map(x=>x.key)).size!==3)throw Error('Round Robin requires three distinct participants');
  return identities;
 }
+function mixedRoster(registered,guests){
+ const roster=[...registered.map(p=>({id:p.player_id,name:p.name??p.player_id,course_handicap:p.course_handicap,guest:false})),...guests.map(p=>({id:p.id,name:p.display_name,course_handicap:p.course_handicap,guest:true,directory_entry_id:p.directory_entry_id}))];
+ participantIdentities(roster);
+ if(new Set(roster.map(p=>p.id)).size!==3)throw Error('Ambiguous Round Robin participant IDs');
+ const directoryIds=roster.filter(p=>p.directory_entry_id).map(p=>p.directory_entry_id);
+ if(new Set(directoryIds).size!==directoryIds.length)throw Error('Duplicate directory participant');
+ return roster;
+}
 function snapshot(roster,teeHoles,scores,guestScores,courseHandicap){
  const identities=participantIdentities(roster);
  const players=roster.map(p=>{
@@ -40,7 +48,7 @@ function calculate(roster,teeHoles,scores,guestScores,courseHandicap){
  const data=snapshot(roster,teeHoles,scores,guestScores,courseHandicap);
  return root.RoundRobinNassau.calculate(data.players,data.holes);
 }
-const api={snapshot,calculate,participantIdentity,participantIdentities};
+const api={snapshot,calculate,participantIdentity,participantIdentities,mixedRoster};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
 else root.RoundRobinAdapter=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
