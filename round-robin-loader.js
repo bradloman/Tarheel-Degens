@@ -13,18 +13,18 @@ async function load(client,matchId){
  const match=matchResult.data;
  if(!match||match.game_type!=='round_robin'||match.hole_count!==18||match.player_count!==3)
   throw Error('Not an 18-hole three-player Round Robin Nassau');
- const [rosterResult,teeResult,scoresResult,pressResult]=await Promise.all([
+ const [rosterResult,guestRosterResult,teeResult,scoresResult,guestScoresResult,pressResult]=await Promise.all([
   client.from('match_players').select('*').eq('match_id',matchId),
+  client.from('guest_players').select('*').eq('match_id',matchId),
   client.from('course_holes').select('*').eq('tee_id',match.tee_id),
   client.from('hole_scores').select('*').eq('match_id',matchId),
+  client.from('guest_hole_scores').select('*').eq('match_id',matchId),
   client.from('match_round_robin_presses').select('*').eq('match_id',matchId).is('undone_at',null)
  ]);
  const roster=check(rosterResult,'Roster'),teeHoles=check(teeResult,'Course holes'),
   scores=check(scoresResult,'Scores'),presses=check(pressResult,'Presses');
- if(roster.length!==3||new Set(roster.map(p=>p.player_id)).size!==3)
-  throw Error('Round Robin requires three distinct registered players');
- const players=roster.map(p=>({id:p.player_id,name:p.player_id,course_handicap:p.course_handicap}));
- const data=root.RoundRobinAdapter.snapshot(players,teeHoles,scores,[],()=>{throw Error('Saved course handicap required');});
+ const players=root.RoundRobinAdapter.mixedRoster(roster,check(guestRosterResult,'Directory roster'));
+ const data=root.RoundRobinAdapter.snapshot(players,teeHoles,scores,check(guestScoresResult,'Directory scores'),()=>{throw Error('Saved course handicap required');});
  const matches=root.RoundRobinNassau.calculate(data.players,data.holes);
  const pressesByMatch={};
  for(const row of presses){
@@ -35,7 +35,7 @@ async function load(client,matchId){
    id:row.id,segment:row.segment,startHole:row.start_hole,parentId:row.parent_press_id??null
   });
  }
- return {match,players:data.players,holes:data.holes,matches,pressesByMatch};
+ return {match,players:data.players,identities:data.identities,holes:data.holes,matches,pressesByMatch};
 }
 const api={load};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;
