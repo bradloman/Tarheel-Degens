@@ -32,13 +32,14 @@ function create(client,matchId,container){
   const key=match.players.slice().sort().join('|');
   const presses=state.pressesByMatch[key]||[];
   container.appendChild(element('p','Active presses: '+presses.map(p=>p.segment+' (hole '+p.startHole+')').join(', ')));
+  const pairPlayers=match.players.map(id=>state.players.find(p=>p.id===id));
   const table=element('table'),head=element('tr');
-  for(const title of ['Hole',...state.players.map(p=>p.name||p.id),'Winner'])head.appendChild(element('th',title));
+  for(const title of ['Hole',...pairPlayers.map(p=>p.name||p.id),'Winner'])head.appendChild(element('th',title));
   table.appendChild(head);
   for(let h=0;h<18;h++){
    const row=element('tr'),hole=state.holes[h],result=match.holes[h];
    row.appendChild(element('th',h+1));
-   for(const player of state.players)row.appendChild(element('td',hole.scores[player.id]??'—'));
+   for(const player of pairPlayers)row.appendChild(element('td',hole.scores[player.id]??'—'));
    row.appendChild(element('td',result.played?result.winner||'AS':'—'));
    table.appendChild(row);
   }
