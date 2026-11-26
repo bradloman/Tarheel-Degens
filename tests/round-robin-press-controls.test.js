@@ -1,0 +1,36 @@
+const assert=require('node:assert/strict');
+global.RoundRobinPressStore=require('../round-robin-press-store.js');
+global.RoundRobinPresses=require('../round-robin-presses.js');
+const {create}=require('../round-robin-press-controls.js');
+const rr=require('../round-robin-nassau.js');
+const players=['A','B','C'].map(id=>({id,courseHandicap:0}));
+const holes=Array.from({length:18},(_,i)=>({number:i+1,strokeIndex:i+1,scores:i<2?{A:3,B:5,C:5}:{}}));
+const matches=rr.calculate(players,holes);
+let rows=[],reloads=0;
+const client={from(){let filters={};return {select(){return this},match(f){Object.assign(filters,f);return this},is(k,v){filters[k]=v;return this},order(){return Promise.resolve({data:rows.filter(r=>Object.entries(filters).every(([k,v])=>r[k]===v)),error:null})}}},async rpc(name,args){if(name==='activate_round_robin_press'){let id='p'+(rows.length+1);rows.push({id,match_id:args.p_match,player_a:args.p_player_a,player_b:args.p_player_b,segment:args.p_segment,start_hole:args.p_start,undone_at:null});return {data:id,error:null}}if(name==='undo_round_robin_press'){rows.find(r=>r.id===args.p_id).undone_at='now';return {error:null}}throw Error(name)}};
+(async()=>{
+ const controls=create(client,'match-1','user-1',async()=>{reloads++});
+ assert.equal(await controls.available(matches[0],'front'),true);
+ assert.equal(await controls.available(matches[2],'front'),false);
+ const p=await controls.activate(matches[0],'front');
+ assert.equal(rows[0].start_hole,3);
+ assert.equal((await controls.list(matches[1])).length,0);
+ await assert.rejects(()=>controls.activate(matches[0],'front'),/not eligible/);
+ await assert.rejects(()=>controls.undo(matches[1],p.id),/not found/);
+ await controls.undo(matches[0],p.id);
+ assert.equal(rows[0].undone_at,'now');
+ assert.equal(reloads,2);
+ // A back-nine press must start at hole 12, not from the last hole of an 18-hole scan.
+ const backHoles=Array.from({length:18},(_,i)=>({number:i+1,strokeIndex:i+1,scores:i<9?{A:4,B:4,C:4}:i<11?{A:3,B:5,C:5}:{}}));
+ const backMatch=rr.calculate(players,backHoles)[0];
+ assert.equal(await controls.available(backMatch,'back'),true);
+ const backPress=await controls.activate(backMatch,'back');
+ assert.equal(rows.find(r=>r.id===backPress.id).start_hole,12);
+ await controls.undo(backMatch,backPress.id);
+ // A front-nine bet that is already closed must not be pressed.
+ const closedHoles=Array.from({length:18},(_,i)=>({number:i+1,strokeIndex:i+1,scores:i<6?{A:3,B:5,C:5}:{}}));
+ const closedMatch=rr.calculate(players,closedHoles)[0];
+ assert.equal(closedMatch.front.closed,true);
+ assert.equal(await controls.available(closedMatch,'front'),false);
+ console.log('Round Robin press control tests passed');
+})().catch(e=>{console.error(e);process.exitCode=1});

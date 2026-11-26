@@ -1,0 +1,25 @@
+const assert=require('node:assert/strict');
+global.RoundRobinNassau=require('../round-robin-nassau.js');
+const adapter=require('../round-robin-adapter.js');
+const roster=[{id:'A',index:8,guest:false},{id:'B',index:12,guest:false},{id:'C',index:20,guest:true}];
+const tee=Array.from({length:18},(_,i)=>({hole_number:i+1,stroke_index:i+1}));
+const scores=tee.flatMap(h=>['A','B'].map(player_id=>({hole_number:h.hole_number,player_id,gross_strokes:4})));
+const guests=tee.map(h=>({hole_number:h.hole_number,guest_id:'C',gross_strokes:4}));
+const snapshot=adapter.snapshot(roster,tee,scores,guests,x=>x);
+assert.deepEqual(snapshot.players.map(p=>p.courseHandicap),[8,12,20]);
+assert.equal(snapshot.holes[0].scores.C,4);
+assert.deepEqual(adapter.calculate(roster,tee,scores,guests,x=>x).map(m=>m.strokes),[[0,4],[0,12],[0,8]]);
+guests.pop();
+assert.equal(adapter.snapshot(roster,tee,scores,guests,x=>x).holes[17].scores.C,undefined);
+
+const identities=adapter.participantIdentities([
+ {id:'same-id',guest:false},
+ {id:'same-id',guest:true,directory_entry_id:'directory-record'},
+ {id:'third',guest:true,directory_entry_id:'another-directory-record'}
+]);
+assert.deepEqual(identities.map(x=>x.key),['registered:same-id','guest:same-id','guest:third']);
+assert.equal(identities[1].directoryEntryId,'directory-record');
+assert.throws(()=>adapter.participantIdentities([
+ {id:'A',guest:false},{id:'A',guest:false},{id:'C',guest:true}
+]),/three distinct participants/);
+console.log('Round Robin Nassau score storage adapter tests passed');
