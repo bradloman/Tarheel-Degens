@@ -23,7 +23,23 @@
   if(keys.some(k=>counts.get(k)!==2))throw Error('Incomplete round robin');
   return writes;
  }
- const api={route};
+ async function save(matches,scores,hole,db,userId){
+  const writes=route(matches,scores,hole);
+  if(!userId||writes.some(w=>w.gross>30))throw Error('Invalid score or saving user');
+  const confirmed=[],failed=[];
+  for(const w of writes){
+   const guest=w.kind==='guest';
+   const record={match_id:w.matchId,[guest?'guest_id':'player_id']:w.playerId,hole_number:w.hole,gross_strokes:w.gross,saved_by:userId};
+   try{
+    const result=await db.from(guest?'guest_hole_scores':'hole_scores').upsert(record,{onConflict:guest?'guest_id,hole_number':'match_id,player_id,hole_number'}).select('gross_strokes').single();
+    if(result.error)throw result.error;
+    if(Number(result.data?.gross_strokes)!==w.gross)throw Error('Score write not confirmed');
+    confirmed.push(w);
+   }catch(e){failed.push({...w,message:e?.message||String(e)});}
+  }
+  return {ok:failed.length===0,confirmed,failed};
+ }
+ const api={route,save};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;
  else root.StandardNassauRoundRobinScores=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
