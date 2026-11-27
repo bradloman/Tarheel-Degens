@@ -10,7 +10,24 @@
         notes:JSON.stringify({roundRobin:{groupId,pairIndex:index}})}
     }));
   }
-  const api={plan};
+  async function create(players, settings, groupId, io) {
+    const configurations=plan(players,settings,groupId);
+    const created=[];
+    try {
+      for(const config of configurations) {
+        const match=await io.createMatch(config.match);
+        if(!match?.id) throw new Error('Match creation did not return an ID.');
+        created.push(match.id);
+        for(const player of config.players) await io.enroll(match.id,player);
+      }
+      return created;
+    } catch(error) {
+      const failure=new Error('Round Robin setup failed: '+(error?.message||String(error)));
+      failure.createdMatchIds=created;
+      throw failure;
+    }
+  }
+  const api={plan,create};
   if(typeof module !== 'undefined' && module.exports) module.exports=api;
   else root.StandardNassauRoundRobin=api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
