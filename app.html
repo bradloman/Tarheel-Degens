@@ -621,7 +621,7 @@ header.td-vegas-header img{display:block;width:100%;height:auto;max-width:100%;o
  #setupPage>.card:first-child{margin-top:3px!important}
 }
 </style>
-<script defer src="./scotch.js"></script><script defer src="./round-robin-nassau.js"></script><script defer src="./round-robin-presses.js"></script><script defer src="./round-robin-adapter.js"></script><script defer src="./round-robin-press-store.js"></script><script defer src="./round-robin-press-controls.js"></script></head><body><header class="td-vegas-header"><img src="./assets/45B2B4CF-7E6F-4271-A2FD-73CF5C11B3AD.png" alt="Tarheel Degens — Always Bet on Yourself. Vegas-inspired golf and gambling banner" width="1536" height="512" fetchpriority="high"></header><main>
+<script defer src="./scotch.js"></script><script defer src="./round-robin-standard-plan.js"></script><script defer src="./round-robin-nassau.js"></script><script defer src="./round-robin-presses.js"></script><script defer src="./round-robin-adapter.js"></script><script defer src="./round-robin-press-store.js"></script><script defer src="./round-robin-press-controls.js"></script></head><body><header class="td-vegas-header"><img src="./assets/45B2B4CF-7E6F-4271-A2FD-73CF5C11B3AD.png" alt="Tarheel Degens — Always Bet on Yourself. Vegas-inspired golf and gambling banner" width="1536" height="512" fetchpriority="high"></header><main>
 <div id="message" class="status">Loading…</div>
 <section id="auth" class="card hidden"><h2>Sign in</h2><p class="muted">Use your email to get a sign-in link. Open the link on this same device.</p><label>Email</label><input id="email" type="email" placeholder="you@example.com"><button id="login">Email me a sign-in link</button></section>
 <section id="app" class="hidden"><nav class="match-tabs" aria-label="Match screens"><button id="setupTab" type="button" aria-selected="true">Match Setup</button><button id="playersTab" type="button" aria-selected="false">Players</button><button id="scoreTab" type="button" aria-selected="false">Live Scorecard</button><button id="recordsTab" type="button" aria-selected="false">Records</button></nav><div id="setupPage">
@@ -1057,6 +1057,19 @@ el('create').onclick=async()=>{try{
  if(tiltMode){const groupCounts={};for(const id of ids){const g=tiltSetup.groups[id];if(!g)throw Error('Assign a foursome to every player.');groupCounts[g]=(groupCounts[g]||0)+1;}if(Object.values(groupCounts).some(x=>x>4)||Object.keys(groupCounts).length!==Math.ceil(ids.length/4))throw Error('Each foursome must contain 1–4 players.');if(tiltSetup.competition==='team'){const counts={};for(const id of ids){const t=tiltSetup.teams[id];if(!t)throw Error('Assign a team to every player.');counts[t]=(counts[t]||0)+1;}if(Object.values(counts).some(x=>x!==tiltSetup.teamSize)||ids.length%tiltSetup.teamSize)throw Error('Every Tilt team must have the selected number of players.');}}
  const quotaMode=el('gameType').value==='quota',quotaShares=quotaMode?[...el('quotaPayoutInputs').querySelectorAll('input')].slice(0,ids.length).map(x=>Number(x.value)):[];if(quotaMode&&(quotaShares.length!==Number(el('quotaPaidPlaces').value)||quotaShares.some(x=>!Number.isFinite(x)||x<0||x>100)||Math.abs(quotaShares.reduce((a,b)=>a+b,0)-100)>.001))throw Error('Quota payout percentages must total 100%.');
  const {data:p,error:pe}=await db.from('players').select('id').eq('id',user.id).maybeSingle();if(pe)throw pe;if(!p)throw Error('Save your profile first.');
+ if(el('gameType').value==='round_robin'){
+  const settings={created_by:user.id,match_date:el('date').value,stake:Number(el('stake').value),course_id:el('courseSelect').value||null,tee_id:el('teeSelect').value||null};
+  const button=el('create');button.disabled=true;
+  try{
+   const matchIds=await StandardNassauRoundRobin.create(ids,settings,crypto.randomUUID(),{
+    async createMatch(row){const result=await db.from('matches').insert(row).select().single();if(result.error)throw result.error;return result.data;},
+    async enroll(matchId,id){const result=id.startsWith('directory:')?await db.rpc('add_directory_player_to_match',{p_match:matchId,p_entry:id.slice(10)}):await db.rpc('add_registered_match_player',{p_match:matchId,p_player:id==='self'?user.id:id.slice(11)});if(result.error)throw result.error;}
+   });
+   await loadMatches();await openMatch(matchIds[0]);msg('Three linked Nassau matches created. Shared score entry is not yet enabled on this development branch.');
+  }catch(failure){await loadMatches();throw Error(failure.message+(failure.createdMatchIds?.length?' Created match IDs: '+failure.createdMatchIds.join(', ')+'. Do not retry until these matches are reviewed.':''));}
+  finally{button.disabled=false;}
+  return;
+ }
  const {data,error:e}=await db.from('matches').insert({created_by:user.id,game_type:el('gameType').value,match_date:el('date').value,stake:Number(el('stake').value),player_count:ids.length,hole_count:['nassau','round_robin'].includes(el('gameType').value)?18:Number(el('count').value),course_id:el('courseSelect').value||null,tee_id:el('teeSelect').value||null,notes:tiltSetup?JSON.stringify({tilt:tiltSetup}):el('gameType').value==='nines'?JSON.stringify({nines:{bettingMode:el('ninesBetMode').value}}):el('gameType').value==='scotch'?JSON.stringify({scotch:{birdieMode:el('scotchBirdieMode').value,bettingMode:el('scotchBetMode').value}}):null}).select().single();if(e)throw e;
  const desired=ids.length;
  try{
